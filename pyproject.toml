@@ -1,0 +1,14 @@
+[project]
+name = "imagemanage"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pillow>=11.3.0",
+    "pywebview>=5.4",
+]
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true
