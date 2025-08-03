@@ -23,29 +23,30 @@
             <span>筛选</span>
           </button>
         </div>
-        <!-- 缩略图大小控制滑块 -->
+        <!-- 缩略图大小选择 -->
         <div class="relative">
           <button 
-            @click="showThumbnailSlider = !showThumbnailSlider"
+            @click="showThumbnailSizeSelector = !showThumbnailSizeSelector"
             class="px-3 py-1.5 rounded-button hover:bg-gray-100 flex items-center space-x-2 whitespace-nowrap min-w-max"
           >
             <i class="fas fa-expand text-gray-500"></i>
-            <span>缩略图大小</span>
+            <span>{{ thumbnailSizeLabel }}</span>
           </button>
           <div 
-            v-if="showThumbnailSlider" 
-            class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-button shadow-lg p-3 z-30"
+            v-if="showThumbnailSizeSelector" 
+            class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-button shadow-lg z-30"
           >
-            <input 
-              type="range" 
-              min="100" 
-              max="180" 
-              v-model="thumbnailMinWidth" 
-              @input="handleThumbnailSizeChange"
-              class="w-24"
-              orient="vertical"
-            >
-            <div class="text-center text-sm text-gray-600 mt-1">{{ thumbnailMinWidth }}px</div>
+            <div class="py-1">
+              <button 
+                v-for="size in thumbnailSizes" 
+                :key="size.value"
+                @click="selectThumbnailSize(size)"
+                class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 whitespace-nowrap"
+                :class="{ 'bg-primary text-white hover:bg-primary-dark': thumbnailMinWidth === size.value }"
+              >
+                {{ size.label }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -67,22 +68,23 @@
           :data-index="index"
         >
           <img 
-            v-if="image.thumbnail && image.loaded" 
+            v-if="image.thumbnail" 
             :src="`data:image/jpeg;base64,${image.thumbnail}`" 
             class="w-full h-full object-cover" 
             :alt="image.name"
             loading="lazy"
+            @load="onImageLoad(index)"
+            @error="onImageError(index)"
           >
           <img 
-            v-else-if="!image.thumbnail && image.loaded"
+            v-else
             :src="`file://${image.path}`" 
             class="w-full h-full object-cover" 
             :alt="image.name"
             loading="lazy"
+            @load="onImageLoad(index)"
+            @error="onImageError(index)"
           >
-          <div v-else class="w-full h-full bg-gray-200 flex items-center justify-center">
-            <div class="text-gray-500 text-sm">加载中...</div>
-          </div>
           <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200"></div>
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
             <button class="bg-white p-1 rounded-full shadow-sm">
@@ -101,409 +103,364 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'PhotoGrid',
-  props: {
-    directoryPath: {
-      type: String,
-      default: ''
-    },
-    showAllPhotos: {
-      type: Boolean,
-      default: false
-    },
-    hasInfoPanel: {
-      type: Boolean,
-      default: false
-    }
+<script setup>
+import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+
+const props = defineProps({
+  directoryPath: {
+    type: String,
+    default: ''
   },
-  data() {
-    return {
-      images: [],
-      displayedImages: [],
-      loading: false,
-      error: null,
-      currentPage: 0,
-      pageSize: 50,  // 每页显示50张图片
-      observer: null,
-      thumbnailMinWidth: 150,  // 缩略图最小宽度，默认150px
-      showThumbnailSlider: false  // 控制缩略图大小滑块的显示/隐藏
-    };
+  showAllPhotos: {
+    type: Boolean,
+    default: false
   },
-  watch: {
-    directoryPath: {
-      handler(newPath) {
-        // 只有在不显示全部照片时才根据目录路径变化加载图片
-        if (!this.showAllPhotos) {
-          this.loadImages(newPath);
-        }
-      },
-      immediate: true
-    },
-    showAllPhotos: {
-      handler(newShowAllPhotos) {
-        // 当showAllPhotos属性变化时，重新加载图片
-        if (newShowAllPhotos) {
-          this.loadImages('');
-        }
-      },
-      immediate: true
-    },
-    thumbnailMinWidth: {
-      handler(newWidth) {
-        // 更新CSS变量
-        if (this.$el) {
-          this.$el.style.setProperty('--thumbnail-min-width', `${newWidth}px`);
-        }
-      },
-      immediate: true
-    }
-  },
-  methods: {
-    async loadImages(directoryPath) {
-      // 清空现有图片列表
-      this.images = [];
-      this.displayedImages = [];
-      this.currentPage = 0;
-      
-      // 如果不是显示全部照片且没有选择目录，重置状态并返回
-      if (!this.showAllPhotos && !directoryPath) {
-        this.loading = false;
-        this.error = null;
-        return;
-      }
-      
-      // 开始加载
-      this.loading = true;
-      this.error = null;
-      
-      try {
-        let result;
-        
-        // 检查electronAPI是否存在
-      if (!window.electronAPI) {
-        console.warn('electronAPI不可用，使用包含EXIF信息的模拟数据');
-        // 使用包含EXIF信息的模拟数据
-        result = {
-          images: [
-            {
-              name: '示例图片1.jpg',
-              path: '/path/to/example/image1.jpg',
-              size: 1024000,
-              width: 1920,
-              height: 1080,
-              date: '2023-05-20T10:30:00',
-              exif: {
-                DateTimeOriginal: '2023:05:20 10:30:00',
-                Model: 'Canon EOS R5',
-                FocalLength: '50mm',
-                FNumber: 'f/1.8',
-                ExifImageWidth: 1920,
-                ExifImageHeight: 1080
-              }
-            },
-            {
-              name: '示例图片2.jpg',
-              path: '/path/to/example/image2.jpg',
-              size: 2048000,
-              width: 3840,
-              height: 2160,
-              date: '2023-05-21T14:45:00',
-              exif: {
-                DateTimeOriginal: '2023:05:21 14:45:00',
-                Model: 'Nikon D850',
-                FocalLength: '24mm',
-                FNumber: 'f/2.8',
-                ExifImageWidth: 3840,
-                ExifImageHeight: 2160
-              }
-            }
-          ]
-        };
-      }
-        
-        // 根据showAllPhotos属性决定调用哪个方法
-        if (this.showAllPhotos) {
-          // 显示全部照片
-          if (window.electronAPI && window.electronAPI.getAllImages) {
-            result = await window.electronAPI.getAllImages();
-          } else {
-            console.warn('getAllImages方法不可用，使用模拟数据');
-            // 使用模拟数据
-            result = {
-              images: [
-                {
-                  name: '示例图片1.jpg',
-                  path: '/path/to/example/image1.jpg',
-                  size: 1024000,
-                  width: 1920,
-                  height: 1080,
-                  exif: {
-                    DateTimeOriginal: '2023:05:20 10:30:00',
-                    Model: 'Canon EOS R5',
-                    FocalLength: '50mm',
-                    FNumber: 'f/1.8'
-                  }
-                },
-                {
-                  name: '示例图片2.jpg',
-                  path: '/path/to/example/image2.jpg',
-                  size: 2048000,
-                  width: 3840,
-                  height: 2160,
-                  exif: {
-                    DateTimeOriginal: '2023:05:21 14:45:00',
-                    Model: 'Nikon D850',
-                    FocalLength: '24mm',
-                    FNumber: 'f/2.8'
-                  }
+  hasInfoPanel: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['select-image'])
+const images = ref([])
+const displayedImages = ref([])
+const loading = ref(false)
+const error = ref(null)
+const currentPage = ref(0)
+const pageSize = 50  // 每页显示50张图片
+const observer = ref(null)
+const thumbnailMinWidth = ref(150)  // 缩略图最小宽度，默认150px
+const showThumbnailSizeSelector = ref(false)  // 控制缩略图大小选择器的显示/隐藏
+const photoGrid = ref(null)
+
+// 缩略图大小选项
+const thumbnailSizes = [
+  { label: '小', value: 120 },
+  { label: '中', value: 150 },
+  { label: '大', value: 180 },
+  { label: '超大', value: 220 }
+]
+
+// 当前选择的缩略图大小标签
+const thumbnailSizeLabel = computed(() => {
+  const currentSize = thumbnailSizes.find(size => size.value === thumbnailMinWidth.value)
+  return currentSize ? currentSize.label : '缩略图大小'
+})
+
+// 加载图片方法
+const loadImages = async (directoryPath) => {
+  images.value = [];
+  displayedImages.value = [];
+  currentPage.value = 0;
+
+  if (!props.showAllPhotos && !directoryPath) {
+    loading.value = false;
+    error.value = null;
+    return;
+  }
+
+  loading.value = true;
+  error.value = null;
+
+  try {
+    let result;
+
+    // 检查是否在pywebview环境中
+      if (!window.pywebview || !window.pywebview.api) {
+        console.log('当前在开发环境，使用模拟数据');
+        // 开发环境回退到模拟数据
+        if (props.showAllPhotos) {
+          result = {
+            images: [
+              {
+                name: '示例图片1.jpg',
+                path: 'C:\\mock\\image1.jpg',
+                size: 1024000,
+                width: 1920,
+                height: 1080,
+                created_at: Date.now() / 1000,
+                modified_at: Date.now() / 1000,
+                thumbnail: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', // 1x1透明像素作为占位符
+                exif: {
+                  DateTimeOriginal: '2023:05:20 10:30:00',
+                  Model: 'Canon EOS R5',
+                  FocalLength: '50mm',
+                  FNumber: 'f/1.8'
                 }
-              ]
-            };
-          }
-        } else {
-          // 显示特定目录的照片
-          if (window.electronAPI && window.electronAPI.getImagesInDirectory) {
-            result = await window.electronAPI.getImagesInDirectory(directoryPath);
-          } else {
-            console.warn('getImagesInDirectory方法不可用，使用模拟数据');
-            // 使用模拟数据
-            result = {
-              images: [
-                {
-                  name: '示例图片1.jpg',
-                  path: '/path/to/example/image1.jpg',
-                  size: 1024000,
-                  width: 1920,
-                  height: 1080,
-                  exif: {
-                    DateTimeOriginal: '2023:05:20 10:30:00',
-                    Model: 'Canon EOS R5',
-                    FocalLength: '50mm',
-                    FNumber: 'f/1.8'
-                  }
-                },
-                {
-                  name: '示例图片2.jpg',
-                  path: '/path/to/example/image2.jpg',
-                  size: 2048000,
-                  width: 3840,
-                  height: 2160,
-                  exif: {
-                    DateTimeOriginal: '2023:05:21 14:45:00',
-                    Model: 'Nikon D850',
-                    FocalLength: '24mm',
-                    FNumber: 'f/2.8'
-                  }
+              },
+              {
+                name: '示例图片2.jpg',
+                path: 'C:\\mock\\image2.jpg',
+                size: 2048000,
+                width: 3840,
+                height: 2160,
+                created_at: Date.now() / 1000,
+                modified_at: Date.now() / 1000,
+                thumbnail: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', // 1x1透明像素作为占位符
+                exif: {
+                  DateTimeOriginal: '2023:05:21 14:45:00',
+                  Model: 'Nikon D850',
+                  FocalLength: '24mm',
+                  FNumber: 'f/2.8'
                 }
-              ]
-            };
-          }
-        }
-        
-        // 检查是否有错误
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        
-        // 更新图片列表，并处理缩略图数据
-        this.images = (result.images || []).map(image => ({
-          ...image,
-          thumbnail: image.thumbnail ? image.thumbnail.toString('base64') : null,
-          loaded: false
-        })).sort((a, b) => {
-          // 按拍摄日期倒序排列，如果没有拍摄日期则使用文件创建时间
-          const getDate = (image) => {
-            if (image.exif && image.exif.DateTimeOriginal) {
-              return new Date(image.exif.DateTimeOriginal);
-            } else if (image.created_at) {
-              return new Date(image.created_at);
-            } else {
-              return new Date(0);
-            }
+              }
+            ]
           };
-          
-          const dateA = getDate(a);
-          const dateB = getDate(b);
-          
-          // 降序排列（最近的在前）
-          return dateB - dateA;
-        });
-        
-        // 重置分页
-        this.currentPage = 0;
-        this.loadMore();
-      } catch (err) {
-        console.error('加载图片时出错:', err);
-        this.error = err.message || '加载图片时出错';
-        this.images = [];
-        this.displayedImages = [];
-      } finally {
-        this.loading = false;
-      }
-    },
-    async selectImage(image) {
-      // 当图片被选中时，将其loaded状态设置为true
-      const index = this.displayedImages.findIndex(img => img.path === image.path);
-      if (index !== -1) {
-        // 使用Vue 3的响应式系统更新数组元素
-        this.displayedImages[index] = { ...this.displayedImages[index], loaded: true };
-        // 触发视图更新
-        this.displayedImages = [...this.displayedImages];
-      }
-
-      // 获取EXIF信息
-      let exifData = image.exif || null;
-      try {
-        if (window.electronAPI && window.electronAPI.getExifData && !exifData) {
-          const result = await window.electronAPI.getExifData(image.path);
-          if (!result.error) {
-            exifData = result.exif;
-          }
-        }
-      } catch (err) {
-        console.error('获取EXIF信息时出错:', err);
-      }
-      
-      // 发射事件，将选中的图片信息和EXIF信息传递给父组件
-      this.$emit('select-image', { ...image, exif: exifData });
-    },
-    updateInfoPanelWidth() {
-      // 根据hasInfoPanel属性设置CSS变量
-      const contentElement = this.$el;
-      if (contentElement) {
-        if (this.hasInfoPanel) {
-          contentElement.style.setProperty('--info-panel-width', '320px');
         } else {
-          contentElement.style.setProperty('--info-panel-width', '0px');
+          result = {
+            images: [
+              {
+                name: '示例图片1.jpg',
+                path: directoryPath + '\\image1.jpg',
+                size: 1024000,
+                width: 1920,
+                height: 1080,
+                created_at: Date.now() / 1000,
+                modified_at: Date.now() / 1000,
+                thumbnail: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', // 1x1透明像素作为占位符
+                exif: {
+                  DateTimeOriginal: '2023:05:20 10:30:00',
+                  Model: 'Canon EOS R5',
+                  FocalLength: '50mm',
+                  FNumber: 'f/1.8'
+                }
+              }
+            ]
+          };
         }
+    } else {
+      // 使用pywebview API调用
+      if (props.showAllPhotos) {
+        // 显示全部照片
+        result = await window.pywebview.api.get_all_images();
+      } else {
+        // 显示特定目录的照片
+        result = await window.pywebview.api.get_images_in_directory(directoryPath);
       }
-    },
-    // 加载更多图片
-    loadMore() {
-      const start = this.currentPage * this.pageSize;
-      const end = start + this.pageSize;
-      const newImages = this.images.slice(start, end);
-      
-      // 为新图片添加loaded状态
-      const newImagesWithLoadedState = newImages.map(image => ({
-        ...image,
-        loaded: false
-      }));
-      
-      this.displayedImages = [...this.displayedImages, ...newImagesWithLoadedState];
-      this.currentPage++;
-      
-      // 在下次DOM更新后重新观察图片
-      this.$nextTick(() => {
-        this.observeImages();
-      });
-    },
-    
-    // 处理滚动事件，实现无限滚动加载
-    handleScroll(event) {
-      const { scrollTop, scrollHeight, clientHeight } = event.target;
-      // 当滚动到底部时自动加载更多
-      if (scrollTop + clientHeight >= scrollHeight - 10) {
-        if (!this.loading && this.hasMoreImages) {
-          this.loadMore();
-        }
-      }
-    },
-    
-    // 处理缩略图大小变化
-    handleThumbnailSizeChange() {
-      // 触发网格重新渲染
-      this.$forceUpdate();
-      
-      // 点击滑块后隐藏滑块面板
-      setTimeout(() => {
-        this.showThumbnailSlider = false;
-      }, 1000);
-    },
-    
-    // 初始化Intersection Observer
-    initIntersectionObserver() {
-      // 创建Intersection Observer实例
-      this.observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            // 当图片进入视口时，标记为已加载
-            const imgElement = entry.target;
-            const imageIndex = parseInt(imgElement.dataset.index);
-            
-            // 更新对应图片的loaded状态
-            if (this.displayedImages[imageIndex]) {
-              // 使用Vue 3的响应式系统更新数组元素
-              this.displayedImages[imageIndex] = { ...this.displayedImages[imageIndex], loaded: true };
-              // 触发视图更新
-              this.displayedImages = [...this.displayedImages];
-              
-              // 停止观察已加载的图片
-              this.observer.unobserve(imgElement);
-            }
-          }
-        });
-      }, {
-        // 设置阈值，当图片进入视口10%时触发
-        threshold: 0.1
-      });
-      
-      // 初始观察已存在的图片
-      this.observeImages();
-    },
-    
-    // 观察图片元素
-    observeImages() {
-      // 在下次DOM更新后执行
-      this.$nextTick(() => {
-        const photoElements = this.$refs.photoGrid.querySelectorAll('.photo-thumbnail');
-        photoElements.forEach((element, index) => {
-          // 确保每个元素都有正确的索引
-          element.dataset.index = index;
-          // 如果图片尚未加载，则观察它
-          if (!this.displayedImages[index] || !this.displayedImages[index].loaded) {
-            this.observer.observe(element);
-          }
-        });
-      });
     }
-  },
-  mounted() {
-    this.updateInfoPanelWidth();
-    // 设置初始的缩略图大小CSS变量
-    if (this.$el) {
-      this.$el.style.setProperty('--thumbnail-min-width', `${this.thumbnailMinWidth}px`);
-    }
-    // 监听滚动事件，实现无限滚动加载
-    this.$refs.photoGrid.addEventListener('scroll', this.handleScroll);
-    
-    // 初始化Intersection Observer
-    this.initIntersectionObserver();
-  },
-  updated() {
-    this.updateInfoPanelWidth();
-    
-    // 在组件更新后重新观察图片
-    this.observeImages();
-  },
-  beforeDestroy() {
-    // 移除滚动事件监听
-    if (this.$refs.photoGrid) {
-      this.$refs.photoGrid.removeEventListener('scroll', this.handleScroll);
-    }
-  },
-  
-  // 计算属性
-  computed: {
-    hasMoreImages() {
-      return this.displayedImages.length < this.images.length;
-    }
-  },
-    
 
-}
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    // 处理图片数据
+    console.log('处理图片数据，总数:', result.images?.length || 0);
+    const processedImages = (result.images || []).map(image => {
+      console.log('图片:', image.name, '缩略图:', !!image.thumbnail);
+      return {
+        ...image,
+        thumbnail: image.thumbnail || null,
+        loaded: true, // 后端返回的图片数据已经是可用的
+        // 转换时间戳为Date对象
+        created_at: image.created_at ? new Date(image.created_at * 1000) : new Date(),
+        modified_at: image.modified_at ? new Date(image.modified_at * 1000) : new Date()
+      };
+    }).sort((a, b) => {
+      // 按修改时间降序排列
+      return new Date(b.modified_at) - new Date(a.modified_at);
+    });
+
+    images.value = processedImages;
+    currentPage.value = 0;
+    // 直接加载第一页数据，避免loadMore作用域问题
+    const start = 0;
+    const end = pageSize;
+    const newImages = images.value.slice(start, end);
+
+    const newImagesWithLoadedState = newImages.map(image => ({
+      ...image,
+      loaded: false
+    }));
+
+    displayedImages.value = newImagesWithLoadedState;
+    currentPage.value = 0;
+  } catch (err) {
+    console.error('加载图片时出错:', err);
+    error.value = err.message || '加载图片时出错';
+    images.value = [];
+    displayedImages.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 图片加载处理函数
+const onImageLoad = (index) => {
+  if (displayedImages.value[index]) {
+    displayedImages.value[index].loaded = true;
+  }
+};
+
+const onImageError = (index) => {
+  if (displayedImages.value[index]) {
+    console.error('图片加载失败:', displayedImages.value[index].path);
+    displayedImages.value[index].loaded = false;
+    displayedImages.value[index].thumbnail = null;
+  }
+};
+
+// 选择图片监听目录路径变化
+watch(() => props.directoryPath, (newPath) => {
+  if (!props.showAllPhotos) {
+    loadImages(newPath);
+  }
+}, { immediate: true })
+
+// 监听显示全部照片变化
+watch(() => props.showAllPhotos, (newShowAllPhotos) => {
+  if (newShowAllPhotos) {
+    loadImages('');
+  }
+}, { immediate: true })
+
+// 监听缩略图大小变化
+watch(thumbnailMinWidth, (newWidth) => {
+  const photoGridElement = document.querySelector('.photo-grid');
+  if (photoGridElement) {
+    photoGridElement.style.setProperty('--thumbnail-min-width', `${newWidth}px`);
+  }
+}, { immediate: true })
+
+// 选择图片
+const selectImage = async (image) => {
+  const index = displayedImages.value.findIndex(img => img.path === image.path);
+  if (index !== -1) {
+    displayedImages.value[index] = { ...displayedImages.value[index], loaded: true };
+  }
+
+  let exifData = image.exif || null;
+  
+  // 获取EXIF信息
+  if (!exifData && window.pywebview && window.pywebview.api) {
+    try {
+      const result = await window.pywebview.api.get_exif_data(image.path);
+      if (!result.error) {
+        exifData = result.exif;
+      }
+    } catch (err) {
+      console.warn('获取EXIF信息失败:', err);
+    }
+  }
+
+  emit('select-image', { ...image, exif: exifData });
+};
+
+// 更新信息面板宽度
+const updateInfoPanelWidth = () => {
+  const contentElement = document.querySelector('.content');
+  if (contentElement) {
+    if (props.hasInfoPanel) {
+      contentElement.style.setProperty('--info-panel-width', '320px');
+    } else {
+      contentElement.style.setProperty('--info-panel-width', '0px');
+    }
+  }
+};
+
+// 加载更多图片
+const loadMore = () => {
+  const start = currentPage.value * pageSize;
+  const end = start + pageSize;
+  const newImages = images.value.slice(start, end);
+
+  displayedImages.value = [...displayedImages.value, ...newImages];
+  currentPage.value++;
+
+  nextTick(() => {
+    observeImages();
+  });
+};
+
+// 处理滚动事件
+const handleScroll = (event) => {
+  const { scrollTop, scrollHeight, clientHeight } = event.target;
+  if (scrollTop + clientHeight >= scrollHeight - 10) {
+    if (!loading.value && hasMoreImages.value) {
+      loadMore();
+    }
+  }
+};
+
+// 选择缩略图大小
+const selectThumbnailSize = (size) => {
+  thumbnailMinWidth.value = size.value;
+  showThumbnailSizeSelector.value = false;
+  
+  // 立即更新CSS变量
+  const photoGridElement = document.querySelector('.photo-grid');
+  if (photoGridElement) {
+    photoGridElement.style.setProperty('--thumbnail-min-width', `${size.value}px`);
+  }
+  
+  nextTick(() => {
+    observeImages();
+  });
+};
+
+// 初始化Intersection Observer
+const initIntersectionObserver = () => {
+  observer.value = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const imgElement = entry.target;
+        const imageIndex = parseInt(imgElement.dataset.index);
+        
+        if (displayedImages.value[imageIndex]) {
+          displayedImages.value[imageIndex] = { ...displayedImages.value[imageIndex], loaded: true };
+          displayedImages.value = [...displayedImages.value];
+          observer.value.unobserve(imgElement);
+        }
+      }
+    });
+  }, {
+    threshold: 0.1
+  });
+};
+
+// 观察图片元素
+const observeImages = () => {
+  nextTick(() => {
+    if (!photoGrid.value || !observer.value) return;
+    
+    const photoElements = photoGrid.value.querySelectorAll('.photo-thumbnail');
+    photoElements.forEach((element, index) => {
+      element.dataset.index = index;
+      if (!displayedImages.value[index] || !displayedImages.value[index].loaded) {
+        observer.value.observe(element);
+      }
+    });
+  });
+};
+
+// 计算属性
+const hasMoreImages = computed(() => {
+  return displayedImages.value.length < images.value.length;
+});
+
+// 生命周期钩子
+onMounted(() => {
+  updateInfoPanelWidth();
+  initIntersectionObserver();
+  
+  // 设置初始缩略图大小
+  const photoGridElement = document.querySelector('.photo-grid');
+  if (photoGridElement) {
+    photoGridElement.style.setProperty('--thumbnail-min-width', `${thumbnailMinWidth.value}px`);
+  }
+  
+  if (photoGrid.value) {
+    photoGrid.value.addEventListener('scroll', handleScroll);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (photoGrid.value) {
+    photoGrid.value.removeEventListener('scroll', handleScroll);
+  }
+  if (observer.value) {
+    observer.value.disconnect();
+  }
+});
 </script>
 
 <style scoped>
@@ -511,10 +468,19 @@ export default {
   width: calc(100% - 280px - var(--info-panel-width, 0px));
 }
 .photo-grid {
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumbnail-min-width, 100px), 1fr));
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumbnail-min-width, 150px), 1fr));
+  gap: 1rem;
 }
 .photo-thumbnail {
-  aspect-ratio: 1/1;
+  aspect-ratio: 1;
+  min-height: var(--thumbnail-min-width, 150px);
+}
+
+@media (max-width: 768px) {
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
 }
 
   /* 垂直滑块样式 */
