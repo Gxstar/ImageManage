@@ -1,113 +1,119 @@
-import webview
 import os
 import json
-from typing import List, Dict, Any
-
-from database import DatabaseManager
-from directory_utils import DirectoryManager
-from image_utils import ImageProcessor
+from typing import Dict, Any, List
+from db import DatabaseManager
 
 class Api:
     def __init__(self):
-        self.window = None
         self.db_manager = DatabaseManager()
-        self.dir_manager = DirectoryManager()
-        self.image_processor = ImageProcessor()
     
-    def test_log(self):
-        return "这是一条来自后端的日志"
-    
-    def select_directory(self) -> Dict[str, Any]:
-        """选择目录对话框"""
+    def get_directories(self) -> Dict[str, Any]:
+        """获取所有已保存的目录"""
         try:
-            # 使用pywebview的目录选择对话框
-            selected_dir = webview.windows[0].create_file_dialog(
-                webview.FOLDER_DIALOG
-            )
-            
-            if selected_dir and len(selected_dir) > 0:
-                dir_path = selected_dir[0]
-                dir_name = os.path.basename(dir_path)
-                
-                # 保存到数据库
-                if self.db_manager.save_directory(dir_path, dir_name):
-                    return {
-                        "success": True,
-                        "path": dir_path,
-                        "name": dir_name
-                    }
-            
-            return {"success": False, "message": "未选择目录"}
-            
+            directories = self.db_manager.get_directories()
+            return {"directories": directories}
         except Exception as e:
-            return {"success": False, "message": f"选择目录失败: {str(e)}"}
+            return {"error": str(e), "directories": []}
     
-    def get_directories(self) -> List[Dict[str, Any]]:
-        """获取所有保存的目录结构"""
+    def add_directory(self, directory_path: str) -> Dict[str, Any]:
+        """添加新的图片目录"""
         try:
-            directories = []
-            db_directories = self.db_manager.get_directories()
+            if not os.path.exists(directory_path):
+                return {"success": False, "error": "目录不存在"}
             
-            for dir_info in db_directories:
-                if "error" in dir_info:
-                    return [dir_info]
-                
-                dir_path = dir_info["path"]
-                if os.path.exists(dir_path):
-                    dir_structure = self.dir_manager.build_directory_structure(dir_path)
-                    directories.append(dir_structure)
-            
-            return directories
-            
+            self.db_manager.add_directory(directory_path)
+            return {"success": True, "message": "目录添加成功"}
         except Exception as e:
-            return [{"error": f"获取目录失败: {str(e)}"}]
+            return {"success": False, "error": str(e)}
     
     def remove_directory(self, directory_path: str) -> Dict[str, Any]:
-        """从数据库中移除目录记录"""
-        return self.db_manager.remove_directory(directory_path)
+        """移除目录"""
+        try:
+            self.db_manager.remove_directory(directory_path)
+            return {"success": True, "message": "目录移除成功"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
     
     def get_images_in_directory(self, directory_path: str) -> Dict[str, Any]:
         """获取指定目录中的图片"""
         try:
-            if not os.path.exists(directory_path):
+            # 将相对路径转换为绝对路径
+            resolved_path = self._resolve_directory_path(directory_path)
+            
+            if not resolved_path or not os.path.exists(resolved_path):
                 return {"error": "目录不存在", "images": []}
             
-            images = self.dir_manager.get_images_in_directory(directory_path)
-            
-            # 为每个图片添加缩略图
-            for image in images:
-                image["thumbnail"] = self.image_processor.generate_thumbnail(image["path"])
-            
+            images = self.db_manager.get_images_in_directory(resolved_path)
             return {"images": images}
-            
         except Exception as e:
             return {"error": f"获取图片失败: {str(e)}", "images": []}
     
     def get_all_images(self) -> Dict[str, Any]:
-        """获取所有目录中的图片"""
+        """获取所有图片"""
         try:
-            all_images = []
-            db_directories = self.db_manager.get_directories()
+            images = self.db_manager.get_all_images()
+            return {"images": images}
+        except Exception as e:
+            return {"error": str(e), "images": []}
+    
+    def update_image_rating(self, file_path: str, rating: int) -> Dict[str, Any]:
+        """更新图片评分"""
+        try:
+            self.db_manager.update_image_rating(file_path, rating)
+            return {"success": True, "message": "评分更新成功"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def update_image_favorite(self, file_path: str, is_favorite: bool) -> Dict[str, Any]:
+        """更新图片收藏状态"""
+        try:
+            self.db_manager.update_image_favorite(file_path, is_favorite)
+            return {"success": True, "message": "收藏状态更新成功"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def get_favorite_images(self) -> Dict[str, Any]:
+        """获取收藏的图片"""
+        try:
+            images = self.db_manager.get_favorite_images()
+            return {"images": images}
+        except Exception as e:
+            return {"error": str(e), "images": []}
+    
+    def delete_image(self, file_path: str) -> Dict[str, Any]:
+        """删除图片记录"""
+        try:
+            self.db_manager.delete_image(file_path)
+            return {"success": True, "message": "图片删除成功"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def _resolve_directory_path(self, directory_path: str) -> str:
+        """将前端传递的相对路径转换为绝对路径"""
+        try:
+            # 如果已经是绝对路径，直接返回
+            if os.path.isabs(directory_path):
+                return directory_path
             
-            for dir_info in db_directories:
-                if "error" in dir_info:
-                    continue
+            # 获取所有已保存的目录
+            directories = self.db_manager.get_directories()
+            
+            # 查找匹配的目录
+            for dir_info in directories:
+                base_path = dir_info["path"]
                 
-                dir_path = dir_info["path"]
-                if os.path.exists(dir_path):
-                    images = self.dir_manager.get_images_in_directory(dir_path)
-                    for image in images:
-                        image["thumbnail"] = self.image_processor.generate_thumbnail(image["path"])
-                    all_images.extend(images)
+                # 检查是否是子目录
+                full_path = os.path.join(base_path, directory_path)
+                if os.path.exists(full_path):
+                    return full_path
+                
+                # 检查是否是直接子目录
+                if directory_path in base_path:
+                    return base_path
             
-            # 按修改时间降序排列
-            all_images.sort(key=lambda x: x["modified_at"], reverse=True)
-            
-            return {"images": all_images}
+            # 如果找不到匹配的目录，返回原始路径
+            return directory_path
             
         except Exception as e:
-            return {"error": f"获取所有图片失败: {str(e)}", "images": []}
-    
-    def get_exif_data(self, image_path: str) -> Dict[str, Any]:
-        """获取图片的EXIF信息"""
-        return self.image_processor.get_exif_data(image_path)
+            print(f"解析目录路径失败: {str(e)}")
+            return directory_path
