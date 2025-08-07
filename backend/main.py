@@ -2,9 +2,12 @@ import webview
 import threading
 from api import Api
 from background_scanner import background_scanner
+from fastapi_server import fastapi_server
 
 def initialize_background_tasks():
     """初始化后台任务"""
+    # 启动FastAPI服务器
+    fastapi_server.start()
     # 启动后台图片扫描
     background_scanner.start_scanning()
 

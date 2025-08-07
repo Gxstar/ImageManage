@@ -1,5 +1,6 @@
 import os
 import base64
+import logging
 from io import BytesIO
 from typing import Dict, Any
 
@@ -52,7 +53,7 @@ class ImageProcessor:
                 return buffer.getvalue()
                 
         except Exception as e:
-            print(f"生成缩略图失败: {str(e)}")
+            logging.getLogger(__name__).error(f"生成缩略图失败: {str(e)}")
             return None
     
     @staticmethod
@@ -60,19 +61,23 @@ class ImageProcessor:
         """从EXIF中获取缩略图"""
         try:
             with Image.open(image_path) as img:
-                # 检查是否有EXIF缩略图
-                if hasattr(img, 'thumbnail') and img.thumbnail:
-                    return img.thumbnail
-                
                 # 尝试从EXIF数据中获取缩略图
                 exif = img._getexif()
-                if exif and 513 in exif:  # 缩略图偏移量标签
-                    thumbnail_data = exif.get(513)  # JPEGInterchangeFormat
-                    if thumbnail_data:
-                        return Image.open(BytesIO(thumbnail_data))
+                if exif:
+                    # 检查是否有缩略图数据
+                    if 513 in exif and 514 in exif:  # JPEGInterchangeFormat + JPEGInterchangeFormatLength
+                        thumbnail_offset = exif[513]
+                        thumbnail_length = exif[514]
+                        if thumbnail_offset and thumbnail_length:
+                            # 读取缩略图数据
+                            with open(image_path, 'rb') as f:
+                                f.seek(thumbnail_offset)
+                                thumbnail_data = f.read(thumbnail_length)
+                                if thumbnail_data:
+                                    return Image.open(BytesIO(thumbnail_data))
                         
         except Exception as e:
-            print(f"获取EXIF缩略图失败: {str(e)}")
+            logging.getLogger(__name__).error(f"获取EXIF缩略图失败: {str(e)}")
         
         return None
     

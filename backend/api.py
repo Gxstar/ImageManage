@@ -117,3 +117,57 @@ class Api:
         except Exception as e:
             print(f"解析目录路径失败: {str(e)}")
             return directory_path
+
+    def get_directory_tree(self, directory_path: str = None) -> Dict[str, Any]:
+        """递归获取目录树结构"""
+        try:
+            if directory_path is None:
+                # 获取所有根目录
+                directories = self.db_manager.get_directories()
+                tree = []
+                for dir_info in directories:
+                    root_path = dir_info["path"]
+                    if os.path.exists(root_path):
+                        tree.append(self._build_directory_tree(root_path))
+                return {"tree": tree}
+            else:
+                # 获取指定目录的树
+                resolved_path = self._resolve_directory_path(directory_path)
+                if not os.path.exists(resolved_path):
+                    return {"error": "目录不存在", "tree": []}
+                tree = self._build_directory_tree(resolved_path)
+                return {"tree": tree}
+        except Exception as e:
+            return {"error": str(e), "tree": []}
+
+    def _build_directory_tree(self, path: str) -> Dict[str, Any]:
+        """递归构建目录树结构"""
+        try:
+            tree = {
+                "name": os.path.basename(path),
+                "path": path,
+                "type": "directory",
+                "children": []
+            }
+            
+            if os.path.isdir(path):
+                for item in os.listdir(path):
+                    item_path = os.path.join(path, item)
+                    if os.path.isdir(item_path):
+                        tree["children"].append(self._build_directory_tree(item_path))
+                    elif item.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
+                        tree["children"].append({
+                            "name": item,
+                            "path": item_path,
+                            "type": "image"
+                        })
+            
+            return tree
+        except Exception as e:
+            return {
+                "name": os.path.basename(path),
+                "path": path,
+                "type": "directory",
+                "error": str(e),
+                "children": []
+            }

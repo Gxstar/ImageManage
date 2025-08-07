@@ -1,11 +1,24 @@
 import sqlite3
 import json
+import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from .base import BaseDB
 
 class ImageManager(BaseDB):
     """图片管理类"""
+    def __init__(self, db_path: str = None):
+        """初始化ImageManager
+        
+        Args:
+            db_path: 数据库文件路径，如果为None则使用默认路径
+        """
+        if db_path is None:
+            # 使用相对于项目根目录的路径
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(os.path.dirname(current_dir))
+            db_path = os.path.join(project_root, 'directories.db')
+        super().__init__(db_path)
     
     def add_image(self, filename: str, file_path: str, file_size: int = None, 
                   created_at: datetime = None, modified_at: datetime = None,
@@ -39,7 +52,7 @@ class ImageManager(BaseDB):
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT filename, file_path, file_size, created_at, modified_at, 
+                    SELECT id, filename, file_path, file_size, created_at, modified_at, 
                            thumbnail, exif_data, directory_path, width, height, 
                            format, is_favorite, rating, added_at
                     FROM images WHERE file_path = ?
@@ -48,12 +61,13 @@ class ImageManager(BaseDB):
                 row = cursor.fetchone()
                 if row:
                     return {
-                        "filename": row[0], "file_path": row[1], "file_size": row[2],
-                        "created_at": row[3], "modified_at": row[4], "thumbnail": row[5],
-                        "exif_data": json.loads(row[6]) if row[6] else {},
-                        "directory_path": row[7], "width": row[8], "height": row[9],
-                        "format": row[10], "is_favorite": bool(row[11]),
-                        "rating": row[12], "added_at": row[13]
+                        "id": row[0],
+                        "filename": row[1], "file_path": row[2], "file_size": row[3],
+                        "created_at": row[4], "modified_at": row[5], "thumbnail_url": f"/api/thumbnail/{row[0]}",
+                        "exif_data": json.loads(row[7]) if row[7] else {},
+                        "directory_path": row[8], "width": row[9], "height": row[10],
+                        "format": row[11], "is_favorite": bool(row[12]),
+                        "rating": row[13], "added_at": row[14]
                     }
                 return None
         except Exception as e:
@@ -66,21 +80,25 @@ class ImageManager(BaseDB):
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT filename, file_path, file_size, created_at, modified_at, 
+                    SELECT id, filename, file_path, file_size, created_at, modified_at, 
                            thumbnail, exif_data, directory_path, width, height, 
                            format, is_favorite, rating, added_at
                     FROM images WHERE directory_path = ? ORDER BY modified_at DESC
                 ''', (directory_path,))
                 
                 rows = cursor.fetchall()
-                return [{
-                    "filename": row[0], "file_path": row[1], "file_size": row[2],
-                    "created_at": row[3], "modified_at": row[4], "thumbnail": row[5],
-                    "exif_data": json.loads(row[6]) if row[6] else {},
-                    "directory_path": row[7], "width": row[8], "height": row[9],
-                    "format": row[10], "is_favorite": bool(row[11]),
-                    "rating": row[12], "added_at": row[13]
-                } for row in rows]
+                images = []
+                for row in rows:
+                    images.append({
+                        "id": row[0],
+                        "filename": row[1], "file_path": row[2], "file_size": row[3],
+                        "created_at": row[4], "modified_at": row[5], "thumbnail_url": f"/api/thumbnail/{row[0]}",
+                        "exif_data": json.loads(row[7]) if row[7] else {},
+                        "directory_path": row[8], "width": row[9], "height": row[10],
+                        "format": row[11], "is_favorite": bool(row[12]),
+                        "rating": row[13], "added_at": row[14]
+                    })
+                return images
         except Exception as e:
             print(f"获取目录图片失败: {str(e)}")
             return []
@@ -91,7 +109,7 @@ class ImageManager(BaseDB):
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 query = '''
-                    SELECT filename, file_path, file_size, created_at, modified_at, 
+                    SELECT id, filename, file_path, file_size, created_at, modified_at, 
                            thumbnail, exif_data, directory_path, width, height, 
                            format, is_favorite, rating, added_at
                     FROM images ORDER BY modified_at DESC
@@ -101,14 +119,18 @@ class ImageManager(BaseDB):
                 
                 cursor.execute(query)
                 rows = cursor.fetchall()
-                return [{
-                    "filename": row[0], "file_path": row[1], "file_size": row[2],
-                    "created_at": row[3], "modified_at": row[4], "thumbnail": row[5],
-                    "exif_data": json.loads(row[6]) if row[6] else {},
-                    "directory_path": row[7], "width": row[8], "height": row[9],
-                    "format": row[10], "is_favorite": bool(row[11]),
-                    "rating": row[12], "added_at": row[13]
-                } for row in rows]
+                images = []
+                for row in rows:
+                    images.append({
+                        "id": row[0],
+                        "filename": row[1], "file_path": row[2], "file_size": row[3],
+                        "created_at": row[4], "modified_at": row[5], "thumbnail_url": f"/api/thumbnail/{row[0]}",
+                        "exif_data": json.loads(row[7]) if row[7] else {},
+                        "directory_path": row[8], "width": row[9], "height": row[10],
+                        "format": row[11], "is_favorite": bool(row[12]),
+                        "rating": row[13], "added_at": row[14]
+                    })
+                return images
         except Exception as e:
             print(f"获取所有图片失败: {str(e)}")
             return []
@@ -215,21 +237,71 @@ class ImageManager(BaseDB):
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT filename, file_path, file_size, created_at, modified_at, 
+                    SELECT id, filename, file_path, file_size, created_at, modified_at, 
                            thumbnail, exif_data, directory_path, width, height, 
                            format, is_favorite, rating, added_at
                     FROM images WHERE is_favorite = 1 ORDER BY added_at DESC
                 ''')
                 
                 rows = cursor.fetchall()
-                return [{
-                    "filename": row[0], "file_path": row[1], "file_size": row[2],
-                    "created_at": row[3], "modified_at": row[4], "thumbnail": row[5],
-                    "exif_data": json.loads(row[6]) if row[6] else {},
-                    "directory_path": row[7], "width": row[8], "height": row[9],
-                    "format": row[10], "is_favorite": bool(row[10]),
-                    "rating": row[11], "added_at": row[12]
-                } for row in rows]
+                images = []
+                for row in rows:
+                    images.append({
+                        "id": row[0],
+                        "filename": row[1], "file_path": row[2], "file_size": row[3],
+                        "created_at": row[4], "modified_at": row[5], "thumbnail_url": f"/api/thumbnail/{row[0]}",
+                        "exif_data": json.loads(row[7]) if row[7] else {},
+                        "directory_path": row[8], "width": row[9], "height": row[10],
+                        "format": row[11], "is_favorite": bool(row[12]),
+                        "rating": row[13], "added_at": row[14]
+                    })
+                return images
         except Exception as e:
             print(f"获取收藏图片失败: {str(e)}")
             return []
+
+    def get_image_by_id(self, image_id: int) -> Optional[Dict[str, Any]]:
+        """根据ID获取图片信息"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, filename, file_path, file_size, created_at, modified_at, 
+                           thumbnail, exif_data, directory_path, width, height, 
+                           format, is_favorite, rating, added_at
+                    FROM images WHERE id = ?
+                ''', (image_id,))
+                
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "id": row[0],
+                        "filename": row[1], "file_path": row[2], "file_size": row[3],
+                        "created_at": row[4], "modified_at": row[5], "thumbnail": row[6],
+                        "thumbnail_url": f"/api/thumbnail/{row[0]}",
+                        "exif_data": json.loads(row[7]) if row[7] else {},
+                        "directory_path": row[8], "width": row[9], "height": row[10],
+                        "format": row[11], "is_favorite": bool(row[12]),
+                        "rating": row[13], "added_at": row[14]
+                    }
+                return None
+        except Exception as e:
+            print(f"根据ID获取图片失败: {str(e)}")
+            return None
+
+    def get_thumbnail_by_id(self, image_id: int) -> Optional[bytes]:
+        """根据ID获取缩略图bytes数据"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT thumbnail FROM images WHERE id = ?
+                ''', (image_id,))
+                
+                row = cursor.fetchone()
+                if row and row[0]:
+                    return row[0]  # 直接返回bytes数据
+                return None
+        except Exception as e:
+            print(f"获取缩略图失败: {str(e)}")
+            return None

@@ -1,11 +1,16 @@
 import sqlite3
 import os
-from typing import Optional
+from typing import List, Optional, Dict, Any
 
 class BaseDB:
     """基础数据库连接类"""
     
-    def __init__(self, db_path: str = "../directories.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # 使用项目根目录的路径（两层上级目录）
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(os.path.dirname(current_dir))
+            db_path = os.path.join(project_root, 'directories.db')
         self.db_path = db_path
         self.init_database()
     
