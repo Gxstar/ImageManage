@@ -117,8 +117,8 @@ class BackgroundScanner:
             exif_result = ImageProcessor.get_exif_data(file_path)
             exif_data = exif_result.get('exif', {}) if 'error' not in exif_result else None
             
-            # 生成缩略图
-            thumbnail = ImageProcessor.generate_thumbnail(file_path, (150, 150))
+            # 生成缩略图 - 使用更大尺寸确保清晰度
+            thumbnail = ImageProcessor.generate_thumbnail(file_path, (400, 400))
             
             # 准备图片数据
             image_data = {

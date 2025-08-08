@@ -16,7 +16,7 @@ except ImportError:
 class ImageProcessor:
     @staticmethod
     def generate_thumbnail(image_path: str, max_size: tuple = (200, 200)) -> bytes:
-        """智能生成缩略图，优先使用EXIF缩略图，没有则自动生成"""
+        """使用Pillow直接处理原始图片生成缩略图，缩略图尺寸不超过max_size"""
         if not PIL_AVAILABLE:
             return None
             
@@ -25,29 +25,16 @@ class ImageProcessor:
                 return None
             
             with Image.open(image_path) as img:
-                # 首先尝试从EXIF获取缩略图
-                exif_thumbnail = ImageProcessor._get_exif_thumbnail(image_path)
-                if exif_thumbnail:
-                    # 检查EXIF缩略图尺寸是否合适
-                    if exif_thumbnail.width >= max_size[0] * 0.8 and exif_thumbnail.height >= max_size[1] * 0.8:
-                        # 使用EXIF缩略图并调整到目标尺寸
-                        exif_thumbnail.thumbnail(max_size, Image.Resampling.LANCZOS)
-                        buffer = BytesIO()
-                        exif_thumbnail.save(buffer, format='JPEG', quality=85)
-                        buffer.seek(0)
-                        return buffer.getvalue()
-                
-                # 如果没有合适的EXIF缩略图，则自动生成
                 # 转换为RGB模式（处理RGBA或其他模式）
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
-                # 计算缩略图尺寸，保持宽高比
+                # 计算缩略图尺寸，保持宽高比，最大尺寸不超过max_size
                 img.thumbnail(max_size, Image.Resampling.LANCZOS)
                 
                 # 将缩略图保存到内存缓冲区
                 buffer = BytesIO()
-                img.save(buffer, format='JPEG', quality=85)
+                img.save(buffer, format='JPEG', quality=90)  # 提高质量到90
                 buffer.seek(0)
                 
                 return buffer.getvalue()
@@ -56,30 +43,7 @@ class ImageProcessor:
             logging.getLogger(__name__).error(f"生成缩略图失败: {str(e)}")
             return None
     
-    @staticmethod
-    def _get_exif_thumbnail(image_path: str) -> Image.Image:
-        """从EXIF中获取缩略图"""
-        try:
-            with Image.open(image_path) as img:
-                # 尝试从EXIF数据中获取缩略图
-                exif = img._getexif()
-                if exif:
-                    # 检查是否有缩略图数据
-                    if 513 in exif and 514 in exif:  # JPEGInterchangeFormat + JPEGInterchangeFormatLength
-                        thumbnail_offset = exif[513]
-                        thumbnail_length = exif[514]
-                        if thumbnail_offset and thumbnail_length:
-                            # 读取缩略图数据
-                            with open(image_path, 'rb') as f:
-                                f.seek(thumbnail_offset)
-                                thumbnail_data = f.read(thumbnail_length)
-                                if thumbnail_data:
-                                    return Image.open(BytesIO(thumbnail_data))
-                        
-        except Exception as e:
-            logging.getLogger(__name__).error(f"获取EXIF缩略图失败: {str(e)}")
-        
-        return None
+
     
     @staticmethod
     def get_exif_data(image_path: str) -> Dict[str, Any]:

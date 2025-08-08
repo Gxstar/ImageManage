@@ -1,5 +1,20 @@
 <template>
   <div class="content flex flex-col h-full">
+    <!-- 工具栏 -->
+    <div class="toolbar p-3 border-b border-gray-200 bg-white">
+      <div class="flex items-center space-x-3">
+        <label class="text-sm font-medium text-gray-700">缩略图:</label>
+        <select
+          v-model="thumbnailSize"
+          class="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option :value="100" selected>小</option>
+          <option :value="150">中</option>
+          <option :value="200">大</option>
+        </select>
+      </div>
+    </div>
+
     <!-- 照片网格 -->
     <div class="flex-1 overflow-y-auto p-6">
       <div v-if="loading" class="text-center py-4">
@@ -8,12 +23,13 @@
       <div v-else-if="error" class="text-center py-4 text-red-500">
         <p>{{ error }}</p>
       </div>
-      <div v-else class="photo-grid grid gap-4">
+      <div v-else class="photo-grid grid gap-4" :style="gridStyle">
         <div 
           v-for="image in images" 
           :key="image.path" 
           class="photo-thumbnail bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-blue-500 cursor-pointer"
           @click="selectImage(image)"
+          :style="{ minHeight: thumbnailSize + 'px' }"
         >
           <img 
             v-if="image.id"
@@ -36,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   directoryPath: {
@@ -53,6 +69,12 @@ const emit = defineEmits(['select-image'])
 const images = ref([])
 const loading = ref(false)
 const error = ref(null)
+const thumbnailSize = ref(100) // 默认100px（小）
+
+// 动态计算网格样式
+const gridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(auto-fill, minmax(${thumbnailSize.value}px, 1fr))`
+}))
 
 // 加载图片方法
 const loadImages = async (directoryPath) => {
@@ -132,19 +154,37 @@ watch(() => props.showAllPhotos, (newShowAllPhotos) => {
 .content {
   width: calc(100% - 280px);
 }
+
 .photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 1rem;
 }
+
 .photo-thumbnail {
   aspect-ratio: 1;
   min-height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+.photo-thumbnail:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+
 
 @media (max-width: 768px) {
   .photo-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+  
+  .toolbar {
+    padding: 0.5rem;
   }
 }
+
+/* 动态网格列数将在computed中处理 */
 </style>
