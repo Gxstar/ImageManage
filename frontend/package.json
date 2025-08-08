@@ -8,17 +8,18 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "dependencies": {},
-  "devDependencies": {},
+  "dependencies": {
+    "element-plus": "^2.10.6"
+  },
   "peerDependencies": {
-    "pinia": "^3.0.3",
-    "vue": "^3.5.17",
-    "vue-router": "^4.5.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@vitejs/plugin-vue": "^6.0.0",
     "autoprefixer": "^10.4.21",
+    "pinia": "^3.0.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.3.5",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
   }
 }

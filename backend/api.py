@@ -152,6 +152,10 @@ class Api:
             
             if os.path.isdir(path):
                 for item in os.listdir(path):
+                    # 跳过以"."开头的隐藏文件夹和文件
+                    if item.startswith('.'):
+                        continue
+                        
                     item_path = os.path.join(path, item)
                     if os.path.isdir(item_path):
                         tree["children"].append(self._build_directory_tree(item_path))

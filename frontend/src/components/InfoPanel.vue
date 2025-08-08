@@ -6,11 +6,17 @@
     </button>
     <!-- 照片预览 -->
     <div class="p-4 border-b border-gray-200">
-      <img :src="`http://localhost:8324/api/image/${imageDetails.id}`"
-           :alt="imageDetails.filename"
-           class="w-full h-48 object-cover rounded-button cursor-pointer hover:opacity-90 transition-opacity duration-200" 
-           loading="lazy"
-           @click="openImageModal">
+      <el-image 
+        :src="`http://localhost:8324/api/image/${imageDetails.id}`"
+        :alt="imageDetails.filename"
+        :preview-src-list="[`http://localhost:8324/api/image/${imageDetails.id}`]"
+        :initial-index="0"
+        fit="cover"
+        class="w-full h-48 rounded-button cursor-pointer"
+        loading="lazy"
+        hide-on-click-modal
+        preview-teleported>
+      </el-image>
     </div>
     <div class="flex-1 overflow-y-auto">
       <!-- 照片信息 -->
@@ -167,24 +173,7 @@
     </div>
   </div>
 
-  <!-- 图片预览模态框 -->
-  <div v-if="showImageModal" 
-       class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
-       @click="closeImageModal">
-    <div class="relative max-w-full max-h-full p-4">
-      <img :src="`http://localhost:8324/api/image/${imageDetails.id}`"
-           :alt="imageDetails.filename"
-           class="max-w-full max-h-full object-contain"
-           @click.stop>
-      <button @click="closeImageModal" 
-              class="absolute top-4 right-4 p-2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-all duration-200">
-        <i class="fas fa-times text-xl"></i>
-      </button>
-      <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-50 px-4 py-2 rounded-lg">
-        <p class="text-sm font-medium">{{ imageDetails.filename }}</p>
-      </div>
-    </div>
-  </div>
+
 </template>
 
 <script setup>
@@ -200,12 +189,16 @@ const props = defineProps({
 const emit = defineEmits(['close', 'update-image']);
 
 const showEditModal = ref(false);
-const showImageModal = ref(false);
 const tempRating = ref(0);
 const tempTags = ref([]);
 const tempCategory = ref('');
 const newTag = ref('');
 const imageDetails = ref(props.image);
+
+// 计算图片预览URL
+const imagePreviewUrl = computed(() => 
+  `http://localhost:8324/api/image/${imageDetails.id}`
+);
 
 // 监听image变化，重置编辑数据
 watch(() => props.image, () => {
@@ -320,14 +313,7 @@ const closeEditModal = () => {
   newTag.value = '';
 };
 
-  // 图片预览相关方法
-  const openImageModal = () => {
-    showImageModal.value = true;
-  };
 
-  const closeImageModal = () => {
-    showImageModal.value = false;
-  };
 
 const setRating = (rating) => {
   tempRating.value = rating;
