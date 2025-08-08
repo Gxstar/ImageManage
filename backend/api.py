@@ -15,14 +15,33 @@ class Api:
         except Exception as e:
             return {"error": str(e), "directories": []}
     
-    def add_directory(self, directory_path: str) -> Dict[str, Any]:
-        """添加新的图片目录"""
+    def add_directory(self) -> Dict[str, Any]:
+        """添加新的图片目录 - 使用原生文件夹选择对话框"""
         try:
+            # 使用pywebview的create_file_dialog选择文件夹
+            import webview
+            selected_folders = webview.windows[0].create_file_dialog(
+                webview.FOLDER_DIALOG,
+                allow_multiple=False
+            )
+            
+            if not selected_folders:
+                return {"success": False, "error": "用户取消了选择"}
+            
+            # 处理create_file_dialog的返回值
+            if isinstance(selected_folders, tuple):
+                directory_path = selected_folders[0]
+            elif isinstance(selected_folders, list):
+                directory_path = selected_folders[0]
+            else:
+                directory_path = str(selected_folders)
+            
             if not os.path.exists(directory_path):
                 return {"success": False, "error": "目录不存在"}
-            
-            self.db_manager.add_directory(directory_path)
-            return {"success": True, "message": "目录添加成功"}
+            #截取目录的最终名字作为名字
+            dir_name = os.path.basename(directory_path)
+            self.db_manager.save_directory(directory_path, dir_name)
+            return {"success": True, "message": "目录添加成功", "path": directory_path}
         except Exception as e:
             return {"success": False, "error": str(e)}
     

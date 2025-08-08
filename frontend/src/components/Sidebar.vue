@@ -330,7 +330,7 @@ const addLocalDirectory = async () => {
 
   // 使用pywebview选择目录
   try {
-    const selectedDir = await window.pywebview.api.select_directory();
+    const selectedDir = await window.pywebview.api.add_directory();
     if (selectedDir && selectedDir.success) {
       // 重新加载目录
       await loadDirectories();
