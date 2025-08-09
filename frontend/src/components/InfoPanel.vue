@@ -11,7 +11,7 @@
         :alt="imageDetails.filename"
         :preview-src-list="[`http://localhost:8324/api/image/${imageDetails.id}`]"
         :initial-index="0"
-        fit="cover"
+        fit="scale-down"
         class="w-full h-48 rounded-button cursor-pointer"
         loading="lazy"
         hide-on-click-modal
@@ -46,7 +46,7 @@
           <p class="text-sm">{{ getExifData('LensModel') || 'N/A' }}</p>
         </div>
         <div>
-          <h3 class="text-xs font-medium text-gray-500">焦距(等效35mm)</h3>
+          <h3 class="text-xs font-medium text-gray-500">焦距</h3>
           <p class="text-sm">{{ getExifData('FocalLength') || 'N/A' }}mm</p>
         </div>
         <div>
@@ -287,6 +287,26 @@ const formatShutterSpeed = (exposureTime) => {
 
 // 格式化尺寸
 const formatDimensions = (width, height) => {
+  // 检查是否有EXIF方向信息，如果图片是竖直的（方向为6或8），则交换宽高
+  if (imageDetails.value.exif_data) {
+    const orientation = imageDetails.value.exif_data.Orientation;
+    // 方向6和8表示图片需要旋转
+    if (orientation === '6' || orientation === '8') {
+      // 交换宽高
+      if (width && height) {
+        return `${height} × ${width}`;
+      } else {
+        // 尝试从EXIF信息获取尺寸
+        const exifWidth = imageDetails.value.exif_data.Width;
+        const exifHeight = imageDetails.value.exif_data.Height;
+        if (exifWidth && exifHeight) {
+          return `${exifHeight} × ${exifWidth}`;
+        }
+      }
+    }
+  }
+  
+  // 默认情况，不交换宽高
   if (width && height) {
     return `${width} × ${height}`;
   } else if (imageDetails.value.exif_data) {

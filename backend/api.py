@@ -67,13 +67,39 @@ class Api:
         except Exception as e:
             return {"error": f"获取图片失败: {str(e)}", "images": []}
     
-    def get_all_images(self) -> Dict[str, Any]:
-        """获取所有图片"""
+    def get_all_images(self, limit: int = None, offset: int = 0) -> Dict[str, Any]:
+        """获取所有图片 - 支持分页"""
         try:
-            images = self.db_manager.get_all_images()
-            return {"images": images}
+            if limit is not None:
+                limit = int(limit)
+            if offset is not None:
+                offset = int(offset)
+            
+            images = self.db_manager.get_all_images(limit=limit, offset=offset)
+            total_count = self.db_manager.get_total_image_count()
+            return {"images": images, "total": total_count, "offset": offset}
         except Exception as e:
-            return {"error": str(e), "images": []}
+            return {"error": str(e), "images": [], "total": 0, "offset": 0}
+
+    def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0) -> Dict[str, Any]:
+        """获取指定目录中的图片 - 支持分页"""
+        try:
+            # 将相对路径转换为绝对路径
+            resolved_path = self._resolve_directory_path(directory_path)
+            
+            if not resolved_path or not os.path.exists(resolved_path):
+                return {"error": "目录不存在", "images": [], "total": 0, "offset": 0}
+            
+            if limit is not None:
+                limit = int(limit)
+            if offset is not None:
+                offset = int(offset)
+            
+            images = self.db_manager.get_images_in_directory(resolved_path, limit=limit, offset=offset)
+            total_count = self.db_manager.get_image_count_in_directory(resolved_path)
+            return {"images": images, "total": total_count, "offset": offset}
+        except Exception as e:
+            return {"error": f"获取图片失败: {str(e)}", "images": [], "total": 0, "offset": 0}
     
     def update_image_rating(self, file_path: str, rating: int) -> Dict[str, Any]:
         """更新图片评分"""

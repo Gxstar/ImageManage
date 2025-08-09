@@ -25,6 +25,26 @@ class ImageProcessor:
                 return None
             
             with Image.open(image_path) as img:
+                # 处理EXIF方向信息
+                try:
+                    # 获取EXIF数据
+                    exif = img._getexif()
+                    if exif is not None:
+                        # EXIF方向标签 (Orientation)
+                        orientation_tag = 0x0112
+                        orientation = exif.get(orientation_tag, 1)
+                        
+                        # 根据方向旋转图片
+                        if orientation == 3:
+                            img = img.rotate(180, expand=True)
+                        elif orientation == 6:
+                            img = img.rotate(270, expand=True)
+                        elif orientation == 8:
+                            img = img.rotate(90, expand=True)
+                except (AttributeError, KeyError, TypeError):
+                    # 如果没有EXIF数据或出错，跳过旋转处理
+                    pass
+                
                 # 转换为RGB模式（处理RGBA或其他模式）
                 if img.mode != 'RGB':
                     img = img.convert('RGB')

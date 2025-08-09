@@ -74,18 +74,26 @@ class ImageManager(BaseDB):
             print(f"获取图片失败: {str(e)}")
             return None
     
-    def get_images_in_directory(self, directory_path: str) -> List[Dict[str, Any]]:
-        """获取指定目录下的所有图片"""
+    def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0) -> List[Dict[str, Any]]:
+        """获取指定目录及其子目录下的所有图片 - 支持分页"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT id, filename, file_path, file_size, created_at, modified_at, 
-                           thumbnail, exif_data, directory_path, width, height, 
+                directory_pattern = directory_path.rstrip('\\/') + '%'
+                query = '''
+                    SELECT id, filename, file_path, file_size, created_at, modified_at,
+                           thumbnail, exif_data, directory_path, width, height,
                            format, is_favorite, rating, added_at
-                    FROM images WHERE directory_path = ? ORDER BY modified_at DESC
-                ''', (directory_path,))
-                
+                    FROM images WHERE directory_path LIKE ? ORDER BY modified_at DESC
+                '''
+
+                params = [directory_pattern]
+                if limit is not None and limit > 0:
+                    query += " LIMIT ? OFFSET ?"
+                    params.extend([limit, offset])
+
+                cursor.execute(query, params)
+
                 rows = cursor.fetchall()
                 images = []
                 for row in rows:
@@ -102,9 +110,25 @@ class ImageManager(BaseDB):
         except Exception as e:
             print(f"获取目录图片失败: {str(e)}")
             return []
+
+    def get_image_count_in_directory(self, directory_path: str) -> int:
+        """获取指定目录及其子目录下的图片总数"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # 使用 LIKE 来匹配目录及其子目录，处理Windows反斜杠
+                directory_pattern = directory_path.rstrip('\\/') + '%'
+                cursor.execute('''
+                    SELECT COUNT(*) FROM images WHERE directory_path LIKE ?
+                ''', (directory_pattern,))
+                result = cursor.fetchone()
+                return result[0] if result else 0
+        except Exception as e:
+            print(f"获取目录图片数量失败: {str(e)}")
+            return 0
     
-    def get_all_images(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """获取所有图片"""
+    def get_all_images(self, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+        """获取所有图片 - 支持分页"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -114,10 +138,12 @@ class ImageManager(BaseDB):
                            format, is_favorite, rating, added_at
                     FROM images ORDER BY modified_at DESC
                 '''
-                if limit:
-                    query += f" LIMIT {limit}"
+                params = []
+                if limit is not None and limit > 0:
+                    query += " LIMIT ? OFFSET ?"
+                    params.extend([limit, offset])
                 
-                cursor.execute(query)
+                cursor.execute(query, params)
                 rows = cursor.fetchall()
                 images = []
                 for row in rows:
@@ -134,6 +160,18 @@ class ImageManager(BaseDB):
         except Exception as e:
             print(f"获取所有图片失败: {str(e)}")
             return []
+
+    def get_total_image_count(self) -> int:
+        """获取所有图片的总数"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT COUNT(*) FROM images')
+                result = cursor.fetchone()
+                return result[0] if result else 0
+        except Exception as e:
+            print(f"获取图片总数失败: {str(e)}")
+            return 0
     
     def delete_image(self, file_path: str) -> bool:
         """从数据库中删除图片"""
