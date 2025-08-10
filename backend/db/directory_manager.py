@@ -1,5 +1,6 @@
 import sqlite3
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from .base import BaseDB
 
 class DirectoryManager(BaseDB):

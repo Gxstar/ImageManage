@@ -1,5 +1,7 @@
-import webview
 import threading
+
+import webview
+
 from api import Api
 from background_scanner import background_scanner
 from fastapi_server import fastapi_server

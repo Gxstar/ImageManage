@@ -1,6 +1,5 @@
-import os
-import base64
 import logging
+import os
 from io import BytesIO
 from typing import Dict, Any
 

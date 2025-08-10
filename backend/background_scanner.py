@@ -1,12 +1,14 @@
 import os
 import threading
 import time
+import logging
 from pathlib import Path
 from typing import List, Tuple
+
 from PIL import Image
+
 from db import DatabaseManager
 from image_utils import ImageProcessor
-import logging
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)

@@ -16,7 +16,7 @@
     </div>
 
     <!-- 照片网格 -->
-    <div class="flex-1 overflow-y-auto p-6 photo-grid-container">
+    <div class="flex-1 overflow-y-auto p-6 photo-grid-container" ref="photosContainer">
       <div v-if="loading" class="text-center py-4">
         <p>正在加载图片...</p>
       </div>
@@ -25,27 +25,44 @@
       </div>
       <div v-else>
         <div class="photo-grid grid gap-4" :style="gridStyle">
+          <!-- 虚拟滚动占位符 -->
           <div 
-            v-for="image in images" 
-            :key="image.path" 
+            v-for="image in visibleImages" 
+            :key="image.id || image.path" 
             class="photo-thumbnail bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-blue-500 cursor-pointer"
             @click="selectImage(image)"
             :style="{ minHeight: thumbnailSize + 'px' }"
           >
-            <img 
-              v-if="image.id"
-              :src="`http://localhost:8324/api/thumbnail/${image.id}`"
-              class="w-full h-full object-cover" 
-              :alt="image.name"
-              loading="lazy"
-            >
-            <img 
-              v-else
-              :src="`http://localhost:8324/api/image/path?file_path=${encodeURIComponent(image.path)}`"
-              class="w-full h-full object-cover" 
-              :alt="image.name"
-              loading="lazy"
-            >
+            <!-- 缩略图容器 -->
+            <div class="thumbnail-container w-full h-full">
+              <img 
+                v-if="image.id && loadedThumbnails.has(image.id)"
+                :src="`http://localhost:8324/api/thumbnail/${image.id}`"
+                class="w-full h-full object-cover" 
+                :alt="image.name || image.filename"
+                loading="lazy"
+                @load="onImageLoad(image.id)"
+                @error="onImageError(image.id)"
+              >
+              <img 
+                v-else-if="loadedThumbnails.has(image.path)"
+                :src="`http://localhost:8324/api/image/path?file_path=${encodeURIComponent(image.path)}`"
+                class="w-full h-full object-cover" 
+                :alt="image.name || image.filename"
+                loading="lazy"
+                @load="onImageLoad(image.path)"
+                @error="onImageError(image.path)"
+              >
+              <div 
+                v-else
+                class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400"
+              >
+                <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -67,11 +84,12 @@
         
         <!-- 图片总数信息 -->
         <div v-if="!loading && images.length > 0" class="text-center py-2 text-sm text-gray-600">
-          显示 {{ Math.min(images.length, totalCount) }} / {{ totalCount }} 张图片
+          显示 {{ Math.min(visibleImages.length, totalCount) }} / {{ totalCount }} 张图片
           <span v-if="totalCount === 0" class="text-gray-400">(暂无图片)</span>
           <div v-if="debugMode" class="text-xs text-gray-500 mt-1">
             当前模式: {{ showAllPhotos ? '全部照片' : '目录: ' + directoryPath }}<br>
-            分页: offset={{ currentOffset }}, limit={{ pageSize }}
+            分页: offset={{ currentOffset }}, limit={{ pageSize }}<br>
+            已加载缩略图: {{ loadedThumbnails.size }}
           </div>
         </div>
       </div>
@@ -80,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onUnmounted } from 'vue'
+import { ref, watch, computed, onUnmounted, nextTick } from 'vue'
 
 const props = defineProps({
   directoryPath: {
@@ -94,21 +112,56 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select-image'])
+
+// 基础数据
 const images = ref([])
 const loading = ref(false)
 const error = ref(null)
-const thumbnailSize = ref(100) // 默认100px（小）
-const pageSize = ref(50) // 每页加载数量
+const thumbnailSize = ref(100)
+const pageSize = ref(50)
 const currentOffset = ref(0)
 const totalCount = ref(0)
 const hasMore = ref(true)
 const isLoadingMore = ref(false)
-const debugMode = ref(false) // 调试模式
+const debugMode = ref(false)
+
+// 缩略图懒加载状态
+const loadedThumbnails = ref(new Set())
+const photosContainer = ref(null)
+
+// 可见图片（用于虚拟滚动）
+const visibleImages = computed(() => images.value)
 
 // 动态计算网格样式
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(auto-fill, minmax(${thumbnailSize.value}px, 1fr))`
 }))
+
+// 缩略图加载/错误处理
+const onImageLoad = (id) => {
+  loadedThumbnails.value.add(id)
+}
+
+const onImageError = (id) => {
+  loadedThumbnails.value.delete(id)
+}
+
+// 加载可见缩略图
+const loadVisibleThumbnails = () => {
+  if (!photosContainer.value) return
+  const container = photosContainer.value
+  const items = container.querySelectorAll('.photo-thumbnail')
+  items.forEach((item, index) => {
+    const rect = item.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+    if (rect.top < containerRect.bottom + 200 && rect.bottom > containerRect.top - 200) {
+      const image = images.value[index]
+      if (image && !loadedThumbnails.value.has(image.id || image.path)) {
+        loadedThumbnails.value.add(image.id || image.path)
+      }
+    }
+  })
+}
 
 // 加载图片方法 - 支持分页
 const loadImages = async (directoryPath, loadMore = false) => {
@@ -116,6 +169,7 @@ const loadImages = async (directoryPath, loadMore = false) => {
     images.value = [];
     currentOffset.value = 0;
     hasMore.value = true;
+    loadedThumbnails.value.clear()
   }
   
   if (!props.showAllPhotos && !directoryPath) {
@@ -140,7 +194,9 @@ const loadImages = async (directoryPath, loadMore = false) => {
       result = {
         images: [
           {
+            id: 1,
             name: '示例图片.jpg',
+            filename: '示例图片.jpg',
             path: directoryPath ? directoryPath + '\\image.jpg' : 'C:\\mock\\image.jpg',
             thumbnail: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
           }
@@ -174,6 +230,11 @@ const loadImages = async (directoryPath, loadMore = false) => {
     currentOffset.value += newImages.length;
     hasMore.value = currentOffset.value < totalCount.value;
 
+    // 延迟加载可见缩略图
+    nextTick(() => {
+      loadVisibleThumbnails()
+    })
+
   } catch (err) {
     console.error('加载图片时出错:', err);
     error.value = err.message || '加载图片时出错';
@@ -196,7 +257,7 @@ const loadMoreImages = () => {
   }
 };
 
-// 滚动到底部检测
+// 滚动到底部检测 + 懒加载
 const handleScroll = (event) => {
   const element = event.target;
   const scrollTop = element.scrollTop;
@@ -207,6 +268,9 @@ const handleScroll = (event) => {
   if (scrollHeight - scrollTop - clientHeight < 200) {
     loadMoreImages();
   }
+  
+  // 懒加载可见缩略图
+  loadVisibleThumbnails()
 };
 
 // 选择图片
@@ -232,17 +296,15 @@ watch(() => props.showAllPhotos, (newShowAllPhotos) => {
 }, { immediate: true })
 
 // 添加滚动事件监听
-const photoGridContainer = ref(null);
-
 const setupScrollListener = () => {
-  const container = document.querySelector('.photo-grid-container');
+  const container = photosContainer.value;
   if (container) {
     container.addEventListener('scroll', handleScroll);
   }
 };
 
 const removeScrollListener = () => {
-  const container = document.querySelector('.photo-grid-container');
+  const container = photosContainer.value;
   if (container) {
     container.removeEventListener('scroll', handleScroll);
   }
@@ -250,7 +312,10 @@ const removeScrollListener = () => {
 
 // 组件挂载后设置滚动监听
 watch(() => images.value.length, () => {
-  setTimeout(setupScrollListener, 100);
+  nextTick(() => {
+    setupScrollListener();
+    loadVisibleThumbnails();
+  });
 });
 
 onUnmounted(() => {
@@ -282,7 +347,61 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.thumbnail-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #f5f5f5;
+}
 
+.thumbnail-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.photo-info {
+  padding: 8px;
+}
+
+.filename {
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metadata {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.load-more {
+  text-align: center;
+  padding: 20px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-placeholder {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 
 @media (max-width: 768px) {
   .photo-grid {

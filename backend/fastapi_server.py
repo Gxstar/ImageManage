@@ -1,6 +1,7 @@
 import os
 import threading
 import urllib.parse
+import mimetypes
 from pathlib import Path
 from typing import Dict
 
@@ -11,8 +12,6 @@ import uvicorn
 
 from db.image_manager import ImageManager
 from db.directory_manager import DirectoryManager
-
-import mimetypes
 
 
 def read_file_safely(file_path: str) -> bytes:
@@ -45,15 +44,16 @@ directory_manager = DirectoryManager()
 
 @app.get("/api/thumbnail/{image_id}")
 async def get_thumbnail(image_id: int):
-    """获取缩略图数据"""
+    """获取图片缩略图"""
     try:
-        thumbnail_data = image_manager.get_thumbnail_by_id(image_id)
-        if not thumbnail_data:
-            raise HTTPException(status_code=404, detail="Thumbnail not found")
-        
-        return Response(content=thumbnail_data, media_type="image/jpeg")
+        thumbnail = image_manager.get_thumbnail(image_id)
+        if thumbnail:
+            return Response(content=thumbnail, media_type="image/jpeg")
+        else:
+            return Response(content=b'', status_code=404)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"获取缩略图失败: {str(e)}")
+        return Response(content=b'', status_code=500)
 
 @app.get("/api/image/{image_id}")
 async def get_image(image_id: int):
