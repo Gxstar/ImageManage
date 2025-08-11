@@ -452,33 +452,14 @@ const loadDirectories = async () => {
 
 // 生命周期钩子
 onMounted(async () => {
-  await loadDirectories();
-
-  // 添加重试机制，确保在pywebview可用时重新加载目录
-  let retryCount = 0;
-  const maxRetries = 5; // 减少重试次数
-
-  const checkPyWebView = async () => {
-    if (retryCount >= maxRetries) {
-      console.log('已达到最大重试次数，停止检查pywebview');
-      return;
-    }
-
-    retryCount++;
-
-    if (window.pywebview && window.pywebview.api) {
-      console.log('检测到pywebview可用，重新加载目录...');
+  if (window.pywebview) {
+    // 使用pywebview的ready事件解决竞态问题
+    window.pywebview.ready.then(async () => {
       await loadDirectories();
-      return;
-    }
-
-    console.log(`第${retryCount}次检查pywebview，还未就绪...`);
-    setTimeout(checkPyWebView, 1000); // 减少等待时间到1秒
-  };
-
-  if (!window.pywebview || !window.pywebview.api) {
-    console.log('启动pywebview检测重试机制...');
-    setTimeout(checkPyWebView, 1000);
+    });
+  } else {
+    // 开发环境直接加载
+    await loadDirectories();
   }
 });
 </script>
