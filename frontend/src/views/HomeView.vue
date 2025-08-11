@@ -5,9 +5,11 @@
       :selectedDirectory="selectedDirectory" 
       @update:selectedDirectory="updateSelectedDirectory" 
       @showAllPhotos="handleShowAllPhotos" 
+      @directoriesLoaded="handleDirectoriesLoaded"
     />
     <!-- 照片网格 -->
     <PhotoGrid 
+      ref="photoGridRef"
       :directoryPath="selectedDirectory" 
       :showAllPhotos="showAllPhotos" 
       @select-image="updateSelectedImage" 
@@ -34,6 +36,7 @@ import InfoPanel from '../components/InfoPanel.vue'
 const selectedDirectory = ref('')
 const selectedImage = ref(null)
 const showAllPhotos = ref(true)
+const photoGridRef = ref(null)
 
 // 方法定义
 const updateSelectedDirectory = (path) => {
@@ -44,6 +47,14 @@ const updateSelectedDirectory = (path) => {
 
 const updateSelectedImage = (image) => {
   selectedImage.value = image
+}
+
+// 当目录加载完成后，刷新全部照片
+const handleDirectoriesLoaded = () => {
+  if (showAllPhotos.value && photoGridRef.value) {
+    // 如果当前是全部照片模式，重新加载
+    photoGridRef.value.refresh()
+  }
 }
 
 const updateImageInfo = async (updatedImage) => {

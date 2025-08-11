@@ -279,7 +279,7 @@ const props = defineProps({
 });
 
 // Emits 定义
-const emit = defineEmits(['update:selectedDirectory', 'showContextMenu', 'showAllPhotos']);
+const emit = defineEmits(['update:selectedDirectory', 'showContextMenu', 'showAllPhotos', 'directoriesLoaded']);
 
 // 响应式数据
 const directories = ref({});
@@ -388,6 +388,7 @@ const loadDirectories = async () => {
   if (!window.pywebview || !window.pywebview.api) {
     console.log('当前在开发环境，使用模拟数据');
     directories.value = {};
+    emit('directoriesLoaded');
     return;
   }
 
@@ -406,14 +407,19 @@ const loadDirectories = async () => {
 
       console.log('最终目录树数据:', newDirectories);
       directories.value = newDirectories;
+      
+      // 目录加载完成后通知父组件
+      emit('directoriesLoaded');
     } else {
       console.log('没有获取到目录树数据');
       directories.value = {};
+      emit('directoriesLoaded');
     }
   } catch (error) {
     console.error('Failed to load directory tree with pywebview:', error);
     directories.value = {};
     console.log('开发环境不显示目录');
+    emit('directoriesLoaded');
   }
 };
 

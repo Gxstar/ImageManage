@@ -118,7 +118,7 @@ const images = ref([])
 const loading = ref(false)
 const error = ref(null)
 const thumbnailSize = ref(100)
-const pageSize = ref(50)
+const pageSize = ref(100)
 const currentOffset = ref(0)
 const totalCount = ref(0)
 const hasMore = ref(true)
@@ -282,6 +282,17 @@ const selectImage = (image) => {
 const resetAndLoad = () => {
   loadImages(props.showAllPhotos ? '' : props.directoryPath);
 };
+
+// 公开方法供父组件调用
+const refresh = () => {
+  resetAndLoad();
+};
+
+// 暴露方法给父组件
+defineExpose({
+  resetAndLoad,
+  refresh
+})
 
 // 监听目录路径变化
 watch(() => props.directoryPath, (newPath) => {
