@@ -164,8 +164,8 @@ class Api:
             print(f"解析目录路径失败: {str(e)}")
             return directory_path
 
-    def get_directory_tree(self, directory_path: str = None) -> Dict[str, Any]:
-        """递归获取目录树结构"""
+    def get_directory_tree(self, directory_path: str = None, max_depth: int = 2) -> Dict[str, Any]:
+        """获取目录树结构，支持深度限制和性能优化"""
         try:
             if directory_path is None:
                 # 获取所有根目录
@@ -174,14 +174,14 @@ class Api:
                 for dir_info in directories:
                     root_path = dir_info["path"]
                     if os.path.exists(root_path):
-                        tree.append(self._build_directory_tree(root_path))
+                        tree.append(self._build_directory_tree_fast(root_path, max_depth))
                 return {"tree": tree}
             else:
                 # 获取指定目录的树
                 resolved_path = self._resolve_directory_path(directory_path)
                 if not os.path.exists(resolved_path):
                     return {"error": "目录不存在", "tree": []}
-                tree = self._build_directory_tree(resolved_path)
+                tree = self._build_directory_tree_fast(resolved_path, max_depth)
                 return {"tree": tree}
         except Exception as e:
             return {"error": str(e), "tree": []}
@@ -220,4 +220,58 @@ class Api:
                 "type": "directory",
                 "error": str(e),
                 "children": []
+            }
+
+    def _build_directory_tree_fast(self, path: str, max_depth: int = 2, current_depth: int = 0) -> Dict[str, Any]:
+        """快速构建目录树结构，支持深度限制和懒加载"""
+        try:
+            tree = {
+                "name": os.path.basename(path),
+                "path": path,
+                "type": "directory",
+                "children": [],
+                "has_subdirs": False
+            }
+            
+            # 如果达到最大深度，只标记是否有子目录，不实际加载
+            if current_depth >= max_depth:
+                try:
+                    # 快速检查是否有子目录
+                    items = os.listdir(path)
+                    for item in items:
+                        if not item.startswith('.'):
+                            item_path = os.path.join(path, item)
+                            if os.path.isdir(item_path):
+                                tree["has_subdirs"] = True
+                                break
+                    return tree
+                except:
+                    return tree
+            
+            if os.path.isdir(path):
+                try:
+                    items = sorted(os.listdir(path))
+                    for item in items:
+                        if item.startswith('.'):
+                            continue
+                            
+                        item_path = os.path.join(path, item)
+                        if os.path.isdir(item_path):
+                            tree["children"].append(
+                                self._build_directory_tree_fast(item_path, max_depth, current_depth + 1)
+                            )
+                            tree["has_subdirs"] = True
+                except (PermissionError, OSError):
+                    # 处理权限错误或无法访问的目录
+                    pass
+            
+            return tree
+        except Exception as e:
+            return {
+                "name": os.path.basename(path),
+                "path": path,
+                "type": "directory",
+                "error": str(e),
+                "children": [],
+                "has_subdirs": False
             }

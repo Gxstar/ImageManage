@@ -162,7 +162,18 @@ const RecursiveSubDirectory = defineComponent({
   },
   emits: ['select-directory', 'show-context-menu', 'remove-directory'],
   setup(props, { emit }) {
-    const toggleDirectoryExpansion = (dir) => {
+    const toggleDirectoryExpansion = async (dir) => {
+      if (dir.has_subdirs && (!dir.subdirectories || dir.subdirectories.length === 0)) {
+        // 懒加载子目录
+        try {
+          const result = await window.pywebview.api.get_directory_tree(dir.path, 1);
+          if (result && result.tree && result.tree[0]) {
+            dir.subdirectories = result.tree[0].children || [];
+          }
+        } catch (error) {
+          console.error('加载子目录失败:', error);
+        }
+      }
       dir.expanded = !dir.expanded;
     };
 
@@ -203,7 +214,10 @@ const RecursiveSubDirectory = defineComponent({
                   event.stopPropagation();
                   this.toggleDirectoryExpansion(node);
                 },
-                class: 'mr-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600'
+                class: [
+                  'mr-2 text-gray-400 hover:text-gray-600',
+                  { 'opacity-0 group-hover:opacity-100': !node.has_subdirs, 'opacity-100': node.has_subdirs }
+                ]
               }, [
                 h('i', {
                   class: [
@@ -251,13 +265,13 @@ const RecursiveSubDirectory = defineComponent({
               h('span', { class: 'text-sm text-gray-700' }, node.name)
             ]) :
             null,
-        node.type === 'directory' && node.expanded && node.subdirectories && node.subdirectories.length > 0 ?
+        node.type === 'directory' && node.expanded && node.has_subdirs ?
           h('div', {
             key: 'sub-' + node.path,
             class: 'ml-4 border-l-2 border-gray-200 pl-2'
           }, [
             h(RecursiveSubDirectory, {
-              directories: node.subdirectories,
+              directories: node.subdirectories || [],
               selectedDirectory: this.selectedDirectory,
               'onSelect-directory': this.selectDirectory,
               'onShow-context-menu': this.showContextMenu,
@@ -296,7 +310,19 @@ const showDirectoryContextMenu = (event, path) => {
 };
 
 // 切换目录展开状态
-const toggleDirectoryExpansion = (dir) => {
+const toggleDirectoryExpansion = async (dir) => {
+  if (dir.has_subdirs && (!dir.subdirectories || dir.subdirectories.length === 0)) {
+    // 懒加载子目录
+    try {
+      await waitForPyWebView();
+      const result = await window.pywebview.api.get_directory_tree(dir.path, 1);
+      if (result && result.tree && result.tree[0]) {
+        dir.subdirectories = result.tree[0].children || [];
+      }
+    } catch (error) {
+      console.error('加载子目录失败:', error);
+    }
+  }
   if (dir) {
     dir.expanded = !dir.expanded;
   }
@@ -393,7 +419,8 @@ const loadDirectories = async () => {
   }
 
   try {
-    const treeResult = await window.pywebview.api.get_directory_tree();
+    // 使用优化后的快速目录加载（限制深度为2层，减少初始加载时间）
+    const treeResult = await window.pywebview.api.get_directory_tree(null, 2);
     console.log('从pywebview获取的目录树数据:', treeResult);
 
     if (treeResult && treeResult.tree && Array.isArray(treeResult.tree)) {
@@ -429,7 +456,7 @@ onMounted(async () => {
 
   // 添加重试机制，确保在pywebview可用时重新加载目录
   let retryCount = 0;
-  const maxRetries = 10;
+  const maxRetries = 5; // 减少重试次数
 
   const checkPyWebView = async () => {
     if (retryCount >= maxRetries) {
@@ -446,7 +473,7 @@ onMounted(async () => {
     }
 
     console.log(`第${retryCount}次检查pywebview，还未就绪...`);
-    setTimeout(checkPyWebView, 2000);
+    setTimeout(checkPyWebView, 1000); // 减少等待时间到1秒
   };
 
   if (!window.pywebview || !window.pywebview.api) {
