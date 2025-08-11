@@ -189,28 +189,11 @@ const loadImages = async (directoryPath, loadMore = false) => {
   try {
     let result;
 
-    // 检查是否在pywebview环境中
-    if (!window.pywebview || !window.pywebview.api) {
-      console.log('当前在开发环境，使用模拟数据');
-      result = {
-        images: [
-          {
-            id: 1,
-            name: '示例图片.jpg',
-            filename: '示例图片.jpg',
-            path: directoryPath ? directoryPath + '\\image.jpg' : 'C:\\mock\\image.jpg',
-            thumbnail: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-          }
-        ],
-        total: 1
-      };
+    // 直接使用 PyWebView API
+    if (props.showAllPhotos) {
+      result = await window.pywebview.api.get_all_images(pageSize.value, currentOffset.value);
     } else {
-      // 使用pywebview API调用
-      if (props.showAllPhotos) {
-        result = await window.pywebview.api.get_all_images(pageSize.value, currentOffset.value);
-      } else {
-        result = await window.pywebview.api.get_images_in_directory(directoryPath, pageSize.value, currentOffset.value);
-      }
+      result = await window.pywebview.api.get_images_in_directory(directoryPath, pageSize.value, currentOffset.value);
     }
 
     if (result.error) {

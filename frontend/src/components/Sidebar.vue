@@ -346,15 +346,6 @@ const convertDirectoryStructure = (treeNode) => {
 
 // 添加本地目录
 const addLocalDirectory = async () => {
-  // 检查是否在pywebview环境中
-  if (!window.pywebview || !window.pywebview.api) {
-    console.log('当前在开发环境，不显示模拟目录');
-    // 开发环境不显示任何目录
-    directories.value = {};
-    return;
-  }
-
-  // 使用pywebview选择目录
   try {
     const selectedDir = await window.pywebview.api.add_directory();
     if (selectedDir && selectedDir.success) {
@@ -362,8 +353,7 @@ const addLocalDirectory = async () => {
       await loadDirectories();
     }
   } catch (error) {
-    console.error('Failed to add directory with pywebview:', error);
-    directories.value = {};
+    console.error('添加目录失败:', error);
   }
 };
 
@@ -374,32 +364,13 @@ const removeDirectory = async (directoryPath) => {
     return;
   }
 
-  // 检查是否在pywebview环境中
-  if (!window.pywebview || !window.pywebview.api) {
-    console.log('当前在开发环境，模拟移除目录');
-    const dirName = directoryPath.split('\\\\').pop();
-    console.log(`在开发环境中模拟移除目录: ${dirName}`);
-
-    // 从本地数据中移除
-    const newDirectories = { ...directories.value };
-    delete newDirectories[directoryPath];
-    directories.value = newDirectories;
-    return;
-  }
-
   try {
     const result = await window.pywebview.api.remove_directory(directoryPath);
     if (result && result.success) {
       await loadDirectories();
     }
   } catch (error) {
-    console.error('Failed to remove directory with pywebview:', error);
-    const dirName = directoryPath.split('\\\\').pop();
-    console.log(`在开发环境中模拟移除目录: ${dirName}`);
-
-    const newDirectories = { ...directories.value };
-    delete newDirectories[directoryPath];
-    directories.value = newDirectories;
+    console.error('移除目录失败:', error);
   }
 };
 
@@ -410,57 +381,34 @@ const showAllPhotos = () => {
 
 // 从后端加载目录树结构
 const loadDirectories = async () => {
-  // 检查是否在pywebview环境中
-  if (!window.pywebview || !window.pywebview.api) {
-    console.log('当前在开发环境，使用模拟数据');
-    directories.value = {};
-    emit('directoriesLoaded');
-    return;
-  }
-
   try {
-    // 使用优化后的快速目录加载（限制深度为2层，减少初始加载时间）
+    // 直接从后端获取目录树
     const treeResult = await window.pywebview.api.get_directory_tree(null, 2);
-    console.log('从pywebview获取的目录树数据:', treeResult);
-
+    
     if (treeResult && treeResult.tree && Array.isArray(treeResult.tree)) {
       const convertedDirs = treeResult.tree.map(convertDirectoryStructure).filter(Boolean);
-      console.log('转换后的目录树数据:', convertedDirs);
-
+      
       const newDirectories = {};
       convertedDirs.forEach(dir => {
         newDirectories[dir.path] = dir;
       });
 
-      console.log('最终目录树数据:', newDirectories);
       directories.value = newDirectories;
-      
-      // 目录加载完成后通知父组件
       emit('directoriesLoaded');
     } else {
-      console.log('没有获取到目录树数据');
       directories.value = {};
       emit('directoriesLoaded');
     }
   } catch (error) {
-    console.error('Failed to load directory tree with pywebview:', error);
+    console.error('加载目录失败:', error);
     directories.value = {};
-    console.log('开发环境不显示目录');
     emit('directoriesLoaded');
   }
 };
 
 // 生命周期钩子
 onMounted(async () => {
-  if (window.pywebview) {
-    // 使用pywebview的ready事件解决竞态问题
-    window.pywebview.ready.then(async () => {
-      await loadDirectories();
-    });
-  } else {
-    // 开发环境直接加载
-    await loadDirectories();
-  }
+  loadDirectories();
 });
 </script>
 

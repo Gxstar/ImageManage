@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [vue()],
   base: './', // 确保构建后资源的相对路径正确
   build: {
-    outDir: '../../dist/renderer', // 构建输出目录，相对于项目根目录
+    outDir: 'dist', // 构建输出目录，相对于frontend目录
     emptyOutDir: true, // 构建前清空输出目录
     // 为Electron环境添加特殊处理
     rollupOptions: {

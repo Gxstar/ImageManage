@@ -100,11 +100,10 @@ class ImageManager(BaseDB):
     
     def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0,
                                sort_by: str = "modified_at", sort_order: str = "desc") -> List[Dict[str, Any]]:
-        """获取指定目录及其子目录下的所有图片 - 支持分页和排序"""
+        """获取指定目录下的所有图片（不包括子目录） - 支持分页和排序"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                directory_pattern = directory_path.rstrip('\\/') + '%'
                 
                 # 构建排序SQL
                 order_by = f"{sort_by} {sort_order.upper()}"
@@ -114,11 +113,11 @@ class ImageManager(BaseDB):
                            m.exif_data, m.directory_path, m.width, m.height,
                            m.format, m.is_favorite, m.rating, m.added_at
                     FROM image_metadata m
-                    WHERE m.directory_path LIKE ?
+                    WHERE m.directory_path = ?
                     ORDER BY m.{order_by}
                 '''
 
-                params = [directory_pattern]
+                params = [directory_path]
                 if limit is not None and limit > 0:
                     query += " LIMIT ? OFFSET ?"
                     params.extend([limit, offset])
@@ -143,15 +142,13 @@ class ImageManager(BaseDB):
             return []
 
     def get_image_count_in_directory(self, directory_path: str) -> int:
-        """获取指定目录及其子目录下的图片总数"""
+        """获取指定目录下的图片总数（不包括子目录）"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                # 使用 LIKE 来匹配目录及其子目录，处理Windows反斜杠
-                directory_pattern = directory_path.rstrip('\\/') + '%'
                 cursor.execute('''
-                    SELECT COUNT(*) FROM image_metadata WHERE directory_path LIKE ?
-                ''', (directory_pattern,))
+                    SELECT COUNT(*) FROM image_metadata WHERE directory_path = ?
+                ''', (directory_path,))
                 result = cursor.fetchone()
                 return result[0] if result else 0
         except Exception as e:

@@ -51,8 +51,8 @@ const updateSelectedImage = (image) => {
 
 // 当目录加载完成后，刷新全部照片
 const handleDirectoriesLoaded = () => {
-  if (showAllPhotos.value && photoGridRef.value) {
-    // 如果当前是全部照片模式，重新加载
+  if (photoGridRef.value) {
+    // 目录加载完成后，刷新PhotoGrid
     photoGridRef.value.refresh()
   }
 }

@@ -63,20 +63,6 @@ class Api:
         except Exception as e:
             return {"success": False, "error": str(e)}
     
-    def get_images_in_directory(self, directory_path: str) -> Dict[str, Any]:
-        """获取指定目录中的图片"""
-        try:
-            # 将相对路径转换为绝对路径
-            resolved_path = self._resolve_directory_path(directory_path)
-            
-            if not resolved_path or not os.path.exists(resolved_path):
-                return {"error": "目录不存在", "images": []}
-            
-            images = self.db_manager.get_images_in_directory(resolved_path)
-            return {"images": images}
-        except Exception as e:
-            return {"error": f"获取图片失败: {str(e)}", "images": []}
-    
     def get_all_images(self, limit: int = None, offset: int = 0) -> Dict[str, Any]:
         """获取所有图片 - 支持分页"""
         return self._handle_request(lambda: {
@@ -188,42 +174,6 @@ class Api:
                 return {"tree": tree}
         except Exception as e:
             return {"error": str(e), "tree": []}
-
-    def _build_directory_tree(self, path: str) -> Dict[str, Any]:
-        """递归构建目录树结构"""
-        try:
-            tree = {
-                "name": os.path.basename(path),
-                "path": path,
-                "type": "directory",
-                "children": []
-            }
-            
-            if os.path.isdir(path):
-                for item in os.listdir(path):
-                    # 跳过以"."开头的隐藏文件夹和文件
-                    if item.startswith('.'):
-                        continue
-                        
-                    item_path = os.path.join(path, item)
-                    if os.path.isdir(item_path):
-                        tree["children"].append(self._build_directory_tree(item_path))
-                    elif item.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
-                        tree["children"].append({
-                            "name": item,
-                            "path": item_path,
-                            "type": "image"
-                        })
-            
-            return tree
-        except Exception as e:
-            return {
-                "name": os.path.basename(path),
-                "path": path,
-                "type": "directory",
-                "error": str(e),
-                "children": []
-            }
 
     def _build_directory_tree_fast(self, path: str, max_depth: int = 2, current_depth: int = 0) -> Dict[str, Any]:
         """快速构建目录树结构，支持深度限制和懒加载"""

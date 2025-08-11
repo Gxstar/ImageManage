@@ -20,6 +20,8 @@ def main():
     # 创建窗口
     window = webview.create_window(
         title='图片管理器',
+        # 开发模式: 'http://localhost:5173'
+        # 生产模式: '../frontend/dist/index.html'
         url='http://localhost:5173',
         width=1200,
         height=800,
