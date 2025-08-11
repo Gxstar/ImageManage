@@ -6,17 +6,18 @@
     </button>
     <!-- 照片预览 -->
     <div class="p-4 border-b border-gray-200">
-      <el-image 
-        :src="`http://localhost:8324/api/image/${imageDetails.id}`"
-        :alt="imageDetails.filename"
-        :preview-src-list="[`http://localhost:8324/api/image/${imageDetails.id}`]"
-        :initial-index="0"
+      <el-image
+        v-if="imageDetails.id"
+        :src="API_URLS.image(imageDetails.id)"
+        :preview-src-list="[API_URLS.image(imageDetails.id)]"
         fit="scale-down"
+
         class="w-full h-48 rounded-button cursor-pointer"
         loading="lazy"
-        hide-on-click-modal
-        preview-teleported>
-      </el-image>
+        preview-teleport
+
+        :alt="imageDetails.filename"
+      />
     </div>
     <div class="flex-1 overflow-y-auto">
       <!-- 照片信息 -->
@@ -177,7 +178,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue'
+import { API_URLS } from '../config/api';
 
 const props = defineProps({
   image: {
@@ -197,7 +199,7 @@ const imageDetails = ref(props.image);
 
 // 计算图片预览URL
 const imagePreviewUrl = computed(() => 
-  `http://localhost:8324/api/image/${imageDetails.id}`
+  API_URLS.image(imageDetails.id)
 );
 
 // 监听image变化，重置编辑数据
@@ -209,17 +211,14 @@ watch(() => props.image, () => {
 
 // 获取图片详细信息
 const fetchImageDetails = async () => {
-  if (!props.image.id) return;
+  if (!props.image?.id) return;
   
-  try {
-    const response = await fetch(`http://localhost:8324/api/image/details/${props.image.id}`);
-    if (response.ok) {
-      const data = await response.json();
-      imageDetails.value = { ...props.image, ...data };
-    }
-  } catch (error) {
-    console.error('获取图片详细信息失败:', error);
-  }
+  const response = await fetch(API_URLS.imageDetails(props.image.id));
+  const data = await response.json();
+  imageDetails.value = { ...props.image, ...data };
+  tempRating.value = data.rating || 0;
+  tempTags.value = data.tags || [];
+  tempCategory.value = data.category || '';
 };
 
 // 组件挂载时获取图片详细信息

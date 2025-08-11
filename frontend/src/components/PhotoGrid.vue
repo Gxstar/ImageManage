@@ -37,7 +37,7 @@
             <div class="thumbnail-container w-full h-full">
               <img 
                 v-if="image.id && loadedThumbnails.has(image.id)"
-                :src="`http://localhost:8324/api/thumbnail/${image.id}`"
+                :src="API_URLS.thumbnail(image.id)"
                 class="w-full h-full object-cover" 
                 :alt="image.name || image.filename"
                 loading="lazy"
@@ -46,7 +46,7 @@
               >
               <img 
                 v-else-if="loadedThumbnails.has(image.path)"
-                :src="`http://localhost:8324/api/image/path?file_path=${encodeURIComponent(image.path)}`"
+                :src="API_URLS.imagePath(image.path)"
                 class="w-full h-full object-cover" 
                 :alt="image.name || image.filename"
                 loading="lazy"
@@ -99,6 +99,7 @@
 
 <script setup>
 import { ref, watch, computed, onUnmounted, nextTick } from 'vue'
+import { API_URLS } from '../config/api'
 
 const props = defineProps({
   directoryPath: {

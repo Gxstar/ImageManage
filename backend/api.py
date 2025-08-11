@@ -8,6 +8,15 @@ class Api:
     def __init__(self):
         self.db_manager = DatabaseManager()
     
+    def _handle_request(self, func, error_default=None):
+        """统一处理API请求的错误"""
+        try:
+            return func()
+        except Exception as e:
+            result = error_default or {}
+            result["error"] = str(e)
+            return result
+    
     def get_directories(self) -> Dict[str, Any]:
         """获取所有已保存的目录"""
         try:
@@ -70,17 +79,11 @@ class Api:
     
     def get_all_images(self, limit: int = None, offset: int = 0) -> Dict[str, Any]:
         """获取所有图片 - 支持分页"""
-        try:
-            if limit is not None:
-                limit = int(limit)
-            if offset is not None:
-                offset = int(offset)
-            
-            images = self.db_manager.get_all_images(limit=limit, offset=offset)
-            total_count = self.db_manager.get_total_image_count()
-            return {"images": images, "total": total_count, "offset": offset}
-        except Exception as e:
-            return {"error": str(e), "images": [], "total": 0, "offset": 0}
+        return self._handle_request(lambda: {
+            "images": self.db_manager.get_all_images(limit=int(limit) if limit else None, offset=int(offset)),
+            "total": self.db_manager.get_total_image_count(),
+            "offset": int(offset)
+        }, {"images": [], "total": 0, "offset": 0})
 
     def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0) -> Dict[str, Any]:
         """获取指定目录中的图片 - 支持分页"""
