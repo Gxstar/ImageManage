@@ -107,6 +107,14 @@ class Api:
         except Exception as e:
             return {"success": False, "error": str(e)}
     
+    def toggle_image_favorite(self, image_id: int, is_favorite: bool) -> Dict[str, Any]:
+        """通过图片ID切换收藏状态"""
+        try:
+            self.db_manager.update_image_favorite(int(image_id), bool(is_favorite))
+            return {"success": True, "message": "收藏状态更新成功"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
     def get_favorite_images(self) -> Dict[str, Any]:
         """获取收藏的图片"""
         try:

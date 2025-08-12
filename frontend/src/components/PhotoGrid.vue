@@ -29,10 +29,23 @@
           <div 
             v-for="image in visibleImages" 
             :key="image.id || image.path" 
-            class="photo-thumbnail bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-blue-500 cursor-pointer"
+            class="photo-thumbnail bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-blue-500 cursor-pointer relative group"
             @click="selectImage(image)"
             :style="{ minHeight: thumbnailSize + 'px' }"
           >
+            <!-- 收藏按钮 -->
+            <button 
+              @click.stop="toggleFavorite(image)"
+              class="absolute top-2 right-2 z-10 p-1.5 bg-black bg-opacity-20 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-opacity-40"
+              :class="{ 'opacity-100': image.is_favorite }"
+            >
+              <FontAwesomeIcon 
+                :icon="image.is_favorite ? faHeartSolid : faHeartRegular" 
+                class="w-4 h-4"
+                :class="{ 'text-red-500': image.is_favorite }"
+              />
+            </button>
+            
             <!-- 缩略图容器 -->
             <div class="thumbnail-container w-full h-full">
               <img 
@@ -100,6 +113,9 @@
 <script setup>
 import { ref, watch, computed, onUnmounted, nextTick } from 'vue'
 import { API_URLS } from '../config/api'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons'
+import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons'
 
 const props = defineProps({
   directoryPath: {
@@ -260,6 +276,31 @@ const handleScroll = (event) => {
 // 选择图片
 const selectImage = (image) => {
   emit('select-image', image);
+};
+
+// 切换收藏状态
+const toggleFavorite = async (image) => {
+  try {
+    const imageId = image.id;
+    if (!imageId) {
+      console.error('图片ID不存在');
+      return;
+    }
+
+    const newFavoriteState = !image.is_favorite;
+    
+    // 调用后端API更新收藏状态
+    const result = await window.pywebview.api.toggle_image_favorite(imageId, newFavoriteState);
+    
+    if (result.success) {
+      // 更新本地状态
+      image.is_favorite = newFavoriteState;
+    } else {
+      console.error('更新收藏状态失败:', result.error);
+    }
+  } catch (error) {
+    console.error('切换收藏状态时出错:', error);
+  }
 };
 
 // 重置并重新加载
