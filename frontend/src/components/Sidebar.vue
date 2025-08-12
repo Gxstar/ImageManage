@@ -3,7 +3,7 @@
     <div class="p-4 border-b border-gray-200">
       <div class="flex items-center space-x-2">
         <div class="w-8 h-8 bg-primary rounded-button flex items-center justify-center">
-          <i class="fas fa-camera text-white text-sm"></i>
+          <font-awesome-icon icon="camera" class="text-white text-sm" />
         </div>
         <span class="font-['Pacifico'] text-xl text-gray-800">照片管理器</span>
       </div>
@@ -13,19 +13,19 @@
         <button @click="showAllPhotos"
           class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
           <div class="icon-wrapper">
-            <i class="fas fa-images text-primary"></i>
+            <font-awesome-icon icon="images" class="text-primary" />
           </div>
           <span>全部照片</span>
         </button>
         <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
           <div class="icon-wrapper">
-            <i class="fas fa-clock text-primary"></i>
+            <font-awesome-icon icon="clock" class="text-primary" />
           </div>
           <span>最近导入</span>
         </button>
         <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
           <div class="icon-wrapper">
-            <i class="fas fa-star text-primary"></i>
+            <font-awesome-icon icon="star" class="text-primary" />
           </div>
           <span>收藏夹</span>
         </button>
@@ -37,10 +37,10 @@
             <h2 class="text-sm font-semibold text-gray-700">本地目录</h2>
             <div class="flex items-center space-x-2">
               <button @click="loadDirectories" class="text-primary hover:text-gray-700" title="刷新目录">
-                <i class="fas fa-sync-alt w-4 h-4"></i>
+                <font-awesome-icon icon="sync-alt" class="w-4 h-4" />
               </button>
               <button @click="addLocalDirectory" class="text-primary hover:text-gray-700">
-                <i class="fas fa-plus w-4 h-4"></i>
+                <font-awesome-icon icon="plus" class="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -55,15 +55,15 @@
                 <div class="flex items-center flex-grow" @click="selectDirectory(dir.path)">
                   <button @click.stop="toggleDirectoryExpansion(dir)"
                     class="mr-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-chevron-down w-4 h-4 transition-transform"
-                      :class="{ 'transform rotate-180': dir.expanded }"></i>
+                    <font-awesome-icon icon="chevron-down" class="w-4 h-4 transition-transform"
+                      :class="{ 'transform rotate-180': dir.expanded }" />
                   </button>
-                  <i class="fas fa-folder w-4 h-4 mr-2 text-primary"></i>
+                  <font-awesome-icon icon="folder" class="w-4 h-4 mr-2 text-primary" />
                   <span class="text-sm">{{ dir.name }}</span>
                 </div>
                 <button @click.stop="removeDirectory(dir.path)"
                   class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600">
-                  <i class="fas fa-times h-4 w-4"></i>
+                  <font-awesome-icon icon="times" class="h-4 w-4" />
                 </button>
               </div>
 
@@ -86,21 +86,21 @@
         <div class="space-y-1">
           <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
             <div class="icon-wrapper">
-              <i class="fas fa-mountain text-primary"></i>
+              <font-awesome-icon icon="mountain" class="text-primary" />
             </div>
             <span>旅行记忆</span>
             <span class="ml-auto text-xs text-gray-400">128</span>
           </button>
           <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
             <div class="icon-wrapper">
-              <i class="fas fa-utensils text-primary"></i>
+              <font-awesome-icon icon="utensils" class="text-primary" />
             </div>
             <span>美食日记</span>
             <span class="ml-auto text-xs text-gray-400">56</span>
           </button>
           <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
             <div class="icon-wrapper">
-              <i class="fas fa-birthday-cake text-primary"></i>
+              <font-awesome-icon icon="birthday-cake" class="text-primary" />
             </div>
             <span>生日派对</span>
             <span class="ml-auto text-xs text-gray-400">42</span>
@@ -114,19 +114,19 @@
         <div class="space-y-1">
           <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
             <div class="icon-wrapper">
-              <i class="fas fa-user text-primary"></i>
+              <font-awesome-icon icon="user" class="text-primary" />
             </div>
             <span>人物</span>
           </button>
           <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
             <div class="icon-wrapper">
-              <i class="fas fa-map-marker-alt text-primary"></i>
+              <font-awesome-icon icon="map-marker-alt" class="text-primary" />
             </div>
             <span>地点</span>
           </button>
           <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
             <div class="icon-wrapper">
-              <i class="fas fa-calendar-alt text-primary"></i>
+              <font-awesome-icon icon="calendar-alt" class="text-primary" />
             </div>
             <span>时间线</span>
           </button>
@@ -136,7 +136,7 @@
     <div class="p-4 border-t border-gray-200">
       <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
         <div class="icon-wrapper">
-          <i class="fas fa-cog text-gray-500"></i>
+          <font-awesome-icon icon="cog" class="text-gray-500" />
         </div>
         <span>设置</span>
       </button>
@@ -146,6 +146,7 @@
 
 <script setup>
 import { ref, onMounted, defineComponent, h } from 'vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 // 定义递归组件
 const RecursiveSubDirectory = defineComponent({
@@ -161,6 +162,9 @@ const RecursiveSubDirectory = defineComponent({
     }
   },
   emits: ['select-directory', 'show-context-menu', 'remove-directory'],
+  components: {
+    'font-awesome-icon': FontAwesomeIcon
+  },
   setup(props, { emit }) {
     const toggleDirectoryExpansion = async (dir) => {
       if (dir.has_subdirs && (!dir.subdirectories || dir.subdirectories.length === 0)) {
@@ -219,14 +223,15 @@ const RecursiveSubDirectory = defineComponent({
                   { 'opacity-0 group-hover:opacity-100': !node.has_subdirs, 'opacity-100': node.has_subdirs }
                 ]
               }, [
-                h('i', {
-                  class: [
-                    'fas fa-chevron-down w-4 h-4 transition-transform',
-                    { 'transform rotate-180': node.expanded }
-                  ]
-                })
+                h(FontAwesomeIcon, {
+                icon: 'chevron-down',
+                class: [
+                  'w-4 h-4 transition-transform',
+                  { 'transform rotate-180': node.expanded }
+                ]
+              })
               ]),
-              h('i', { class: 'fas fa-folder w-4 h-4 mr-2 text-primary' }),
+              h(FontAwesomeIcon, { icon: 'folder', class: 'w-4 h-4 mr-2 text-primary' }),
               h('span', { class: 'text-sm' }, node.name)
             ]),
             h('button', {
@@ -261,7 +266,7 @@ const RecursiveSubDirectory = defineComponent({
                 { 'bg-primary/10': this.selectedDirectory === node.path }
               ]
             }, [
-              h('i', { class: 'fas fa-image w-4 h-4 mr-2 text-gray-500' }),
+              h(FontAwesomeIcon, { icon: 'image', class: 'w-4 h-4 mr-2 text-gray-500' }),
               h('span', { class: 'text-sm text-gray-700' }, node.name)
             ]) :
             null,

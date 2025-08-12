@@ -69,7 +69,9 @@
         <div class="col-span-2">
           <h3 class="text-xs font-medium text-gray-500">评分</h3>
           <div class="flex items-center space-x-1">
-            <i v-for="n in 5" :key="n" class="fas" :class="n <= (imageDetails.rating || 0) ? 'fa-star text-yellow-400' : 'fa-star text-gray-300'"></i>
+            <font-awesome-icon v-for="n in 5" :key="n" 
+              icon="star" 
+              :class="n <= (imageDetails.rating || 0) ? 'text-yellow-400' : 'text-gray-300'" />
           </div>
         </div>
       </div>
@@ -78,23 +80,23 @@
         <h3 class="font-medium mb-3">快速操作</h3>
         <div class="grid grid-cols-2 gap-2">
           <button class="py-2 rounded-button bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200">
-            <i class="fas fa-edit text-gray-500"></i>
+            <font-awesome-icon icon="edit" class="text-gray-500" />
             <span>编辑</span>
           </button>
           <button class="py-2 rounded-button bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200">
-            <i class="fas fa-share-alt text-gray-500"></i>
+            <font-awesome-icon icon="share-alt" class="text-gray-500" />
             <span>分享</span>
           </button>
           <button class="py-2 rounded-button bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200">
-            <i class="fas fa-trash-alt text-gray-500"></i>
+            <font-awesome-icon icon="trash-alt" class="text-gray-500" />
             <span>删除</span>
           </button>
           <button class="py-2 rounded-button bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200">
-            <i class="fas fa-tags text-gray-500"></i>
+            <font-awesome-icon icon="tags" class="text-gray-500" />
             <span>标签</span>
           </button>
           <button class="col-span-2 py-2 rounded-button bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200" @click="openEditModal">
-            <i class="fas fa-edit text-gray-500"></i>
+            <font-awesome-icon icon="edit" class="text-gray-500" />
             <span>编辑信息</span>
           </button>
         </div>
@@ -105,7 +107,7 @@
         <div class="flex flex-wrap gap-2 mb-4">
           <span v-for="tag in (imageDetails.tags || [])" :key="tag" class="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm flex items-center space-x-1 cursor-pointer hover:bg-primary/20 transition-colors duration-200">
             <span>{{ tag }}</span>
-            <i class="fas fa-times-circle"></i>
+            <font-awesome-icon icon="times-circle" />
           </span>
         </div>
         <div v-if="imageDetails.category">
@@ -115,7 +117,7 @@
           </div>
         </div>
         <button class="w-full py-2 rounded-button bg-white border border-dashed border-gray-300 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200">
-          <i class="fas fa-plus text-gray-400"></i>
+          <font-awesome-icon icon="plus" class="text-gray-400" />
           <span>新建相册</span>
         </button>
       </div>
@@ -127,7 +129,7 @@
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium">编辑照片信息</h3>
             <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-times"></i>
+              <font-awesome-icon icon="times" />
             </button>
           </div>
           
@@ -136,10 +138,11 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">评分</label>
               <div class="flex space-x-1">
-                <i v-for="n in 5" :key="n" 
-                   class="fas fa-star text-2xl cursor-pointer" 
-                   :class="n <= tempRating ? 'text-yellow-400' : 'text-gray-300'"
-                   @click="setRating(n)"></i>
+                <font-awesome-icon v-for="n in 5" :key="n" 
+                  icon="star"
+                  class="text-2xl cursor-pointer" 
+                  :class="n <= tempRating ? 'text-yellow-400' : 'text-gray-300'"
+                  @click="setRating(n)" />
               </div>
             </div>
             
@@ -149,7 +152,7 @@
               <div class="flex flex-wrap gap-2 mb-2">
                 <span v-for="tag in tempTags" :key="tag" class="px-2 py-1 bg-primary/10 text-primary rounded-full text-sm flex items-center space-x-1">
                   <span>{{ tag }}</span>
-                  <i class="fas fa-times-circle cursor-pointer" @click="removeTag(tag)"></i>
+                  <font-awesome-icon icon="times-circle" class="cursor-pointer" @click="removeTag(tag)" />
                 </span>
               </div>
               <div class="flex space-x-2">
