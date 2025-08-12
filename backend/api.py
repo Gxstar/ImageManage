@@ -91,10 +91,10 @@ class Api:
         except Exception as e:
             return {"error": f"获取图片失败: {str(e)}", "images": [], "total": 0, "offset": 0}
     
-    def update_image_rating(self, file_path: str, rating: int) -> Dict[str, Any]:
+    def update_image_rating(self, image_id: int, rating: int) -> Dict[str, Any]:
         """更新图片评分"""
         try:
-            self.db_manager.update_image_rating(file_path, rating)
+            self.db_manager.update_image_rating(image_id, rating)
             return {"success": True, "message": "评分更新成功"}
         except Exception as e:
             return {"success": False, "error": str(e)}

@@ -4,6 +4,13 @@ import sqlite3
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+try:
+    import pyexiv2
+    HAS_PYEXIV2 = True
+except ImportError:
+    HAS_PYEXIV2 = False
+    print("警告: pyexiv2未安装，无法修改图片XMP信息")
+
 from .base import BaseDB
 
 class ImageManager(BaseDB):
@@ -25,7 +32,8 @@ class ImageManager(BaseDB):
                   created_at: datetime = None, modified_at: datetime = None,
                   thumbnail: bytes = None, exif_data: Dict[str, Any] = None,
                   directory_path: str = None, width: int = None, 
-                  height: int = None, format: str = None) -> bool:
+                  height: int = None, format: str = None, rating: int = None) -> bool:
+
         """添加图片到数据库"""
         try:
             with self.get_connection() as conn:
@@ -36,11 +44,11 @@ class ImageManager(BaseDB):
                 cursor.execute('''
                     INSERT OR REPLACE INTO image_metadata 
                     (filename, file_path, file_size, created_at, modified_at, 
-                     exif_data, directory_path, width, height, format)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     exif_data, directory_path, width, height, format,rating)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
                 ''', (
                     filename, file_path, file_size, created_at, modified_at,
-                    exif_json, directory_path, width, height, format
+                    exif_json, directory_path, width, height, format,rating
                 ))
                 
                 # 获取插入的ID
@@ -247,14 +255,105 @@ class ImageManager(BaseDB):
             print(f"更新图片收藏状态失败: {str(e)}")
             return False
     
-    def update_image_rating(self, image_id: int, rating: float) -> bool:
-        """更新图片评分"""
+    def _update_xmp_rating(self, file_path: str, rating: int) -> bool:
+        """更新图片XMP中的评分信息"""
+        if not HAS_PYEXIV2:
+            print("警告: pyexiv2未安装，跳过XMP更新")
+            return False
+            
         try:
+            # 使用pathlib处理路径
+            from pathlib import Path
+            file_path_obj = Path(file_path)
+            
+            if not file_path_obj.exists():
+                print(f"文件不存在: {file_path}")
+                return False
+                
+            # 检查支持的图片格式
+            supported_formats = {'.jpg', '.jpeg', '.tiff', '.tif', '.png', '.webp', '.dng', '.nef', '.cr2', '.arw'}
+            file_ext = file_path_obj.suffix.lower()
+            if file_ext not in supported_formats:
+                print(f"不支持的图片格式: {file_ext}")
+                return False
+            
+            # 解决中文路径问题：使用临时文件方案
+            import tempfile
+            import shutil
+            
+            # 使用临时目录，确保更好的清理
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # 创建临时文件路径
+                temp_filename = f"temp_{os.path.basename(file_path_obj)}"
+                temp_path = os.path.join(temp_dir, temp_filename)
+                
+                try:
+                    # 复制文件到临时目录
+                    shutil.copy2(str(file_path_obj), temp_path)
+                    
+                    # 在临时文件上操作XMP
+                    metadata = pyexiv2.Image(temp_path)
+                    
+                    # 读取现有XMP数据
+                    xmp_data = metadata.read_xmp()
+                    
+                    # 更新XMP中的评分（支持多种XMP标签格式）
+                    xmp_data['Xmp.xmp.Rating'] = str(rating)
+                    
+                    # 写入修改后的XMP数据
+                    metadata.modify_xmp(xmp_data)
+                    
+                    # 将修改后的文件复制回原位置
+                    shutil.copy2(temp_path, str(file_path_obj))
+                    
+                    print(f"成功更新图片XMP评分: {file_path} -> {rating}")
+                    return True
+                    
+                except Exception as e:
+                    # 临时目录会在退出with语句时自动清理
+                    raise e
+            
+        except ImportError as e:
+            print(f"pyexiv2导入错误: {str(e)}")
+            return False
+        except Exception as e:
+            print(f"更新图片XMP评分失败: {file_path} - {str(e)}")
+            return False
+
+    def update_image_rating(self, image_id: int, rating: int) -> bool:
+        """更新图片评分（同时更新数据库和XMP信息）"""
+        try:
+            # 先获取图片文件路径
+            image = self.get_image_by_id(image_id)
+            if not image:
+                print(f"找不到图片ID: {image_id}")
+                return False
+                
+            file_path = image.get('file_path')
+            if not file_path or not os.path.exists(file_path):
+                print(f"图片文件不存在: {file_path}")
+                return False
+            
+            # 更新数据库
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('UPDATE image_metadata SET rating = ? WHERE id = ?', (rating, image_id))
                 conn.commit()
-                return cursor.rowcount > 0
+                
+                if cursor.rowcount == 0:
+                    print(f"数据库中未找到图片ID: {image_id}")
+                    return False
+            
+            # 更新图片XMP信息
+            xmp_updated = self._update_xmp_rating(file_path, rating)
+            
+            if xmp_updated:
+                print(f"成功更新图片评分: ID={image_id}, 评分={rating}")
+            else:
+                print(f"仅更新数据库评分，XMP更新失败: ID={image_id}")
+            
+            return True
+            
         except Exception as e:
             print(f"更新图片评分失败: {str(e)}")
             return False
@@ -282,7 +381,8 @@ class ImageManager(BaseDB):
                         directory_path=image_data.get('directory_path'),
                         width=image_data.get('width'),
                         height=image_data.get('height'),
-                        format=image_data.get('format')
+                        format=image_data.get('format'),
+                        rating=image_data.get('rating')
                     )
                 
                 image_id = row[0]
@@ -297,7 +397,9 @@ class ImageManager(BaseDB):
                         exif_data = ?,
                         width = ?,
                         height = ?,
-                        format = ?
+                        format = ?,
+                        rating = ?
+
                     WHERE id = ?
                 ''', (
                     image_data.get('filename'),
@@ -308,6 +410,8 @@ class ImageManager(BaseDB):
                     image_data.get('width'),
                     image_data.get('height'),
                     image_data.get('format'),
+                    image_data.get('rating'),
+
                     image_id
                 ))
                 

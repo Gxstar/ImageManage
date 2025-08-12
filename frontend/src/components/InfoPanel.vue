@@ -68,11 +68,14 @@
         </div>
         <div class="col-span-2">
           <h3 class="text-xs font-medium text-gray-500">评分</h3>
-          <div class="flex items-center space-x-1">
-            <font-awesome-icon v-for="n in 5" :key="n" 
-              icon="star" 
-              :class="n <= (imageDetails.rating || 0) ? 'text-yellow-400' : 'text-gray-300'" />
-          </div>
+          <el-rate
+            v-model="imageDetails.rating"
+            :max="5"
+            :allow-half="false"
+            size="small"
+            class="mt-1"
+            @change="updateRating"
+          />
         </div>
       </div>
       <!-- 快速操作 -->
@@ -94,10 +97,6 @@
           <button class="py-2 rounded-button bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200">
             <font-awesome-icon icon="tags" class="text-gray-500" />
             <span>标签</span>
-          </button>
-          <button class="col-span-2 py-2 rounded-button bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 flex items-center justify-center space-x-2 transition-colors duration-200" @click="openEditModal">
-            <font-awesome-icon icon="edit" class="text-gray-500" />
-            <span>编辑信息</span>
           </button>
         </div>
       </div>
@@ -122,59 +121,7 @@
         </button>
       </div>
     </div>
-    <!-- 编辑信息模态框 -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg w-96 max-w-90vw max-h-90vh overflow-y-auto">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium">编辑照片信息</h3>
-            <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700">
-              <font-awesome-icon icon="times" />
-            </button>
-          </div>
-          
-          <div class="space-y-4">
-            <!-- 评分 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">评分</label>
-              <div class="flex space-x-1">
-                <font-awesome-icon v-for="n in 5" :key="n" 
-                  icon="star"
-                  class="text-2xl cursor-pointer" 
-                  :class="n <= tempRating ? 'text-yellow-400' : 'text-gray-300'"
-                  @click="setRating(n)" />
-              </div>
-            </div>
-            
-            <!-- 标签 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">标签</label>
-              <div class="flex flex-wrap gap-2 mb-2">
-                <span v-for="tag in tempTags" :key="tag" class="px-2 py-1 bg-primary/10 text-primary rounded-full text-sm flex items-center space-x-1">
-                  <span>{{ tag }}</span>
-                  <font-awesome-icon icon="times-circle" class="cursor-pointer" @click="removeTag(tag)" />
-                </span>
-              </div>
-              <div class="flex space-x-2">
-                <input v-model="newTag" placeholder="添加新标签" class="flex-1 border border-gray-300 rounded-button px-3 py-1 text-sm">
-                <button @click="addTag" class="px-3 py-1 bg-primary text-white rounded-button text-sm">添加</button>
-              </div>
-            </div>
-            
-            <!-- 分类 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">分类</label>
-              <input v-model="tempCategory" placeholder="输入分类" class="w-full border border-gray-300 rounded-button px-3 py-1 text-sm">
-            </div>
-          </div>
-          
-          <div class="flex justify-end space-x-3 mt-6">
-            <button @click="closeEditModal" class="px-4 py-2 border border-gray-300 rounded-button text-sm">取消</button>
-            <button @click="saveChanges" class="px-4 py-2 bg-primary text-white rounded-button text-sm">保存</button>
-          </div>
-        </div>
-      </div>
-    </div>
+
   </div>
 
 
@@ -193,21 +140,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'update-image']);
 
-const showEditModal = ref(false);
-const tempRating = ref(0);
-const tempTags = ref([]);
-const tempCategory = ref('');
-const newTag = ref('');
 const imageDetails = ref(props.image);
-
+const imageRating=ref(0)
 // 计算图片预览URL
 const imagePreviewUrl = computed(() => 
   API_URLS.image(imageDetails.id)
 );
 
-// 监听image变化，重置编辑数据
+// 监听image变化，重置数据
 watch(() => props.image, () => {
-  closeEditModal();
   imageDetails.value = props.image;
   fetchImageDetails();
 });
@@ -223,6 +164,8 @@ const fetchImageDetails = async () => {
   tempTags.value = data.tags || [];
   tempCategory.value = data.category || '';
 };
+// 获取图片评分
+
 
 // 组件挂载时获取图片详细信息
 onMounted(() => {
@@ -322,54 +265,27 @@ const formatDimensions = (width, height) => {
   return 'N/A';
 };
 
-// 编辑相关方法
-const openEditModal = () => {
-  tempRating.value = imageDetails.value.rating || 0;
-    tempTags.value = [...(imageDetails.value.tags || [])];
-    tempCategory.value = imageDetails.value.category || '';
-  showEditModal.value = true;
-};
-
-const closeEditModal = () => {
-  showEditModal.value = false;
-  newTag.value = '';
-};
-
-
-
-const setRating = (rating) => {
-  tempRating.value = rating;
-};
-
-const addTag = () => {
-  if (newTag.value.trim() && !tempTags.value.includes(newTag.value.trim())) {
-    tempTags.value.push(newTag.value.trim());
-    newTag.value = '';
-  }
-};
-
-const removeTag = (tag) => {
-  tempTags.value = tempTags.value.filter(t => t !== tag);
-};
-
-const saveChanges = async () => {
-  const updatedImage = {
-    ...imageDetails.value,
-    rating: tempRating.value,
-    tags: [...tempTags.value],
-    category: tempCategory.value
-  };
-
+// 实时更新评分
+const updateRating = async (newRating) => {
   try {
-    // 通过pywebview API更新图片信息
-    const result = await window.electronAPI.updateImageInfo(updatedImage);
-    if (result.success) {
-      // 更新成功后，通知父组件更新数据
-      emit('update-image', updatedImage);
-      closeEditModal();
+    const result = await window.pywebview.api.update_image_rating(
+      imageDetails.value.id, 
+      newRating
+    );
+    
+    if (!result.success) {
+      throw new Error(result.error || '评分更新失败');
     }
+    
+    // 更新本地数据
+    imageDetails.value.rating = newRating;
+    
+    // 通知父组件更新数据
+    emit('update-image', { ...imageDetails.value, rating: newRating });
+    
   } catch (error) {
-    console.error('更新图片信息失败:', error);
+    console.error('更新评分失败:', error);
+    alert('评分更新失败: ' + error.message);
   }
 };
 </script>
