@@ -100,7 +100,10 @@
           显示 {{ Math.min(visibleImages.length, totalCount) }} / {{ totalCount }} 张图片
           <span v-if="totalCount === 0" class="text-gray-400">(暂无图片)</span>
           <div v-if="debugMode" class="text-xs text-gray-500 mt-1">
-            当前模式: {{ showAllPhotos ? '全部照片' : '目录: ' + directoryPath }}<br>
+            当前模式: {{ 
+              showFavorites ? '收藏夹' : 
+              showAllPhotos ? '全部照片' : '目录: ' + directoryPath 
+            }}<br>
             分页: offset={{ currentOffset }}, limit={{ pageSize }}<br>
             已加载缩略图: {{ loadedThumbnails.size }}
           </div>
@@ -123,6 +126,10 @@ const props = defineProps({
     default: ''
   },
   showAllPhotos: {
+    type: Boolean,
+    default: false
+  },
+  showFavorites: {
     type: Boolean,
     default: false
   }
@@ -189,7 +196,7 @@ const loadImages = async (directoryPath, loadMore = false) => {
     loadedThumbnails.value.clear()
   }
   
-  if (!props.showAllPhotos && !directoryPath) {
+  if (!props.showAllPhotos && !props.showFavorites && !directoryPath) {
     loading.value = false;
     error.value = null;
     return;
@@ -206,7 +213,17 @@ const loadImages = async (directoryPath, loadMore = false) => {
     let result;
 
     // 直接使用 PyWebView API
-    if (props.showAllPhotos) {
+    if (props.showFavorites) {
+      result = await window.pywebview.api.get_favorite_images();
+      // 收藏夹不支持分页，一次性获取所有
+      if (result.images) {
+        result.total = result.images.length;
+        // 只有在loadMore时才需要切片，初次加载显示全部
+        if (loadMore) {
+          result.images = result.images.slice(currentOffset.value, currentOffset.value + pageSize.value);
+        }
+      }
+    } else if (props.showAllPhotos) {
       result = await window.pywebview.api.get_all_images(pageSize.value, currentOffset.value);
     } else {
       result = await window.pywebview.api.get_images_in_directory(directoryPath, pageSize.value, currentOffset.value);
@@ -227,8 +244,16 @@ const loadImages = async (directoryPath, loadMore = false) => {
     }
 
     totalCount.value = result.total || 0;
-    currentOffset.value += newImages.length;
-    hasMore.value = currentOffset.value < totalCount.value;
+    
+    // 收藏夹模式下，分页逻辑需要调整
+    if (props.showFavorites) {
+      // 收藏夹模式下，初次加载显示全部，loadMore时不再加载更多
+      currentOffset.value = images.value.length;
+      hasMore.value = false; // 收藏夹一次性显示全部，不支持分页加载更多
+    } else {
+      currentOffset.value += newImages.length;
+      hasMore.value = currentOffset.value < totalCount.value;
+    }
 
     // 延迟加载可见缩略图
     nextTick(() => {
@@ -305,7 +330,18 @@ const toggleFavorite = async (image) => {
 
 // 重置并重新加载
 const resetAndLoad = () => {
-  loadImages(props.showAllPhotos ? '' : props.directoryPath);
+  let targetPath = '';
+  if (!props.showAllPhotos && !props.showFavorites) {
+    // 目录模式
+    targetPath = props.directoryPath;
+  } else if (props.showAllPhotos) {
+    // 全部照片模式
+    targetPath = '';
+  } else {
+    // 收藏夹模式
+    targetPath = '';
+  }
+  loadImages(targetPath);
 };
 
 // 公开方法供父组件调用
@@ -321,13 +357,18 @@ defineExpose({
 
 // 监听目录路径变化
 watch(() => props.directoryPath, (newPath) => {
-  if (!props.showAllPhotos) {
+  if (!props.showAllPhotos && !props.showFavorites) {
     resetAndLoad();
   }
 }, { immediate: true })
 
 // 监听显示全部照片变化
 watch(() => props.showAllPhotos, (newShowAllPhotos) => {
+  resetAndLoad();
+}, { immediate: true })
+
+// 监听显示收藏夹变化
+watch(() => props.showFavorites, (newShowFavorites) => {
   resetAndLoad();
 }, { immediate: true })
 

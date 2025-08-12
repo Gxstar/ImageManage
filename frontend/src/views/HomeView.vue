@@ -3,8 +3,11 @@
     <!-- 侧边栏 -->
     <Sidebar 
       :selectedDirectory="selectedDirectory" 
+      :showAllPhotos="showAllPhotos"
+      :showFavorites="showFavorites"
       @update:selectedDirectory="updateSelectedDirectory" 
       @showAllPhotos="handleShowAllPhotos" 
+      @showFavorites="handleShowFavorites"
       @directoriesLoaded="handleDirectoriesLoaded"
     />
     <!-- 照片网格 -->
@@ -12,6 +15,7 @@
       ref="photoGridRef"
       :directoryPath="selectedDirectory" 
       :showAllPhotos="showAllPhotos" 
+      :showFavorites="showFavorites"
       @select-image="updateSelectedImage" 
       :has-info-panel="!!selectedImage" 
     />
@@ -36,13 +40,15 @@ import InfoPanel from '../components/InfoPanel.vue'
 const selectedDirectory = ref('')
 const selectedImage = ref(null)
 const showAllPhotos = ref(true)
+const showFavorites = ref(false)
 const photoGridRef = ref(null)
 
 // 方法定义
 const updateSelectedDirectory = (path) => {
   selectedDirectory.value = path
-  // 当选择特定目录时，关闭全部照片模式
+  // 当选择特定目录时，关闭全部照片和收藏夹模式
   showAllPhotos.value = false
+  showFavorites.value = false
 }
 
 const updateSelectedImage = (image) => {
@@ -76,7 +82,16 @@ const updateImageInfo = async (updatedImage) => {
 const handleShowAllPhotos = () => {
   // 设置显示全部照片模式
   showAllPhotos.value = true
+  showFavorites.value = false
   // 清空selectedDirectory，避免与全部照片模式冲突
+  selectedDirectory.value = ''
+}
+
+const handleShowFavorites = () => {
+  // 设置显示收藏夹模式
+  showFavorites.value = true
+  showAllPhotos.value = false
+  // 清空selectedDirectory，避免与收藏夹模式冲突
   selectedDirectory.value = ''
 }
 </script>

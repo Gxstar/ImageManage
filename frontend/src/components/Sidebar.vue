@@ -11,19 +11,16 @@
     <div class="flex-1 overflow-y-auto py-4">
       <div class="px-4 space-y-1">
         <button @click="showAllPhotos"
-          class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
+          class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left"
+          :class="{ 'bg-primary/10': props.showAllPhotos }">
           <div class="icon-wrapper">
             <font-awesome-icon icon="images" class="text-primary" />
           </div>
           <span>全部照片</span>
         </button>
-        <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-          <div class="icon-wrapper">
-            <font-awesome-icon icon="clock" class="text-primary" />
-          </div>
-          <span>最近导入</span>
-        </button>
-        <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
+        <button @click="showFavorites"
+          class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left"
+          :class="{ 'bg-primary/10': props.showFavorites }">
           <div class="icon-wrapper">
             <font-awesome-icon icon="star" class="text-primary" />
           </div>
@@ -294,11 +291,19 @@ const props = defineProps({
   selectedDirectory: {
     type: String,
     default: ''
+  },
+  showAllPhotos: {
+    type: Boolean,
+    default: true
+  },
+  showFavorites: {
+    type: Boolean,
+    default: false
   }
 });
 
 // Emits 定义
-const emit = defineEmits(['update:selectedDirectory', 'showContextMenu', 'showAllPhotos', 'directoriesLoaded']);
+const emit = defineEmits(['update:selectedDirectory', 'showContextMenu', 'showAllPhotos', 'showFavorites', 'directoriesLoaded']);
 
 // 响应式数据
 const directories = ref({});
@@ -382,6 +387,11 @@ const removeDirectory = async (directoryPath) => {
 // 显示全部照片
 const showAllPhotos = () => {
   emit('showAllPhotos');
+};
+
+// 显示收藏夹
+const showFavorites = () => {
+  emit('showFavorites');
 };
 
 // 从后端加载目录树结构
