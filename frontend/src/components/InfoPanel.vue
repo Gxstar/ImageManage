@@ -141,7 +141,6 @@ const props = defineProps({
 const emit = defineEmits(['close', 'update-image']);
 
 const imageDetails = ref(props.image);
-const imageRating=ref(0)
 // 计算图片预览URL
 const imagePreviewUrl = computed(() => 
   API_URLS.image(imageDetails.id)
@@ -160,12 +159,7 @@ const fetchImageDetails = async () => {
   const response = await fetch(API_URLS.imageDetails(props.image.id));
   const data = await response.json();
   imageDetails.value = { ...props.image, ...data };
-  tempRating.value = data.rating || 0;
-  tempTags.value = data.tags || [];
-  tempCategory.value = data.category || '';
 };
-// 获取图片评分
-
 
 // 组件挂载时获取图片详细信息
 onMounted(() => {

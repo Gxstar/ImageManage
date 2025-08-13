@@ -258,64 +258,24 @@ class ImageManager(BaseDB):
     def _update_xmp_rating(self, file_path: str, rating: int) -> bool:
         """更新图片XMP中的评分信息"""
         if not HAS_PYEXIV2:
-            print("警告: pyexiv2未安装，跳过XMP更新")
+            print("警告: pyexiv2未安装，无法修改图片XMP信息")
             return False
             
         try:
-            # 使用pathlib处理路径
-            from pathlib import Path
-            file_path_obj = Path(file_path)
+            with pyexiv2.Image(file_path,encoding='GBK') as metadata:
             
-            if not file_path_obj.exists():
-                print(f"文件不存在: {file_path}")
-                return False
+                # 读取现有XMP数据
+                xmp_data = metadata.read_xmp()
                 
-            # 检查支持的图片格式
-            supported_formats = {'.jpg', '.jpeg', '.tiff', '.tif', '.png', '.webp', '.dng', '.nef', '.cr2', '.arw'}
-            file_ext = file_path_obj.suffix.lower()
-            if file_ext not in supported_formats:
-                print(f"不支持的图片格式: {file_ext}")
-                return False
-            
-            # 解决中文路径问题：使用临时文件方案
-            import tempfile
-            import shutil
-            
-            # 使用临时目录，确保更好的清理
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # 创建临时文件路径
-                temp_filename = f"temp_{os.path.basename(file_path_obj)}"
-                temp_path = os.path.join(temp_dir, temp_filename)
+                # 更新XMP中的评分
+                xmp_data['Xmp.xmp.Rating'] = str(rating)
                 
-                try:
-                    # 复制文件到临时目录
-                    shutil.copy2(str(file_path_obj), temp_path)
-                    
-                    # 在临时文件上操作XMP
-                    metadata = pyexiv2.Image(temp_path)
-                    
-                    # 读取现有XMP数据
-                    xmp_data = metadata.read_xmp()
-                    
-                    # 更新XMP中的评分（支持多种XMP标签格式）
-                    xmp_data['Xmp.xmp.Rating'] = str(rating)
-                    
-                    # 写入修改后的XMP数据
-                    metadata.modify_xmp(xmp_data)
-                    
-                    # 将修改后的文件复制回原位置
-                    shutil.copy2(temp_path, str(file_path_obj))
-                    
-                    print(f"成功更新图片XMP评分: {file_path} -> {rating}")
-                    return True
-                    
-                except Exception as e:
-                    # 临时目录会在退出with语句时自动清理
-                    raise e
+                # 写入修改后的XMP数据
+                metadata.modify_xmp(xmp_data)
+                
+                print(f"成功更新图片XMP评分: {file_path} -> {rating}")
+                return True
             
-        except ImportError as e:
-            print(f"pyexiv2导入错误: {str(e)}")
-            return False
         except Exception as e:
             print(f"更新图片XMP评分失败: {file_path} - {str(e)}")
             return False
