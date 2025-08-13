@@ -55,3 +55,12 @@ class DatabaseManager:
 
     def get_favorite_images(self, *args, **kwargs):
         return self.image_manager.get_favorite_images(*args, **kwargs)
+
+    def get_image_by_id(self, *args, **kwargs):
+        return self.image_manager.get_image_by_id(*args, **kwargs)
+
+    def get_thumbnail(self, *args, **kwargs):
+        return self.image_manager.get_thumbnail(*args, **kwargs)
+
+    def get_thumbnail_by_id(self, *args, **kwargs):
+        return self.image_manager.get_thumbnail_by_id(*args, **kwargs)

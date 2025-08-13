@@ -156,9 +156,16 @@ watch(() => props.image, () => {
 const fetchImageDetails = async () => {
   if (!props.image?.id) return;
   
-  const response = await fetch(API_URLS.imageDetails(props.image.id));
-  const data = await response.json();
-  imageDetails.value = { ...props.image, ...data };
+  try {
+    const result = await window.pywebview.api.get_image_details(props.image.id);
+    if (result.success) {
+      imageDetails.value = { ...props.image, ...result.image };
+    } else {
+      console.error('获取图片详细信息失败:', result.error);
+    }
+  } catch (error) {
+    console.error('获取图片详细信息失败:', error);
+  }
 };
 
 // 组件挂载时获取图片详细信息

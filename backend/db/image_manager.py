@@ -461,18 +461,10 @@ class ImageManager(BaseDB):
                 
                 row = cursor.fetchone()
                 if row:
-                    # 获取缩略图
-                    cursor.execute('''
-                        SELECT thumbnail FROM image_thumbnails
-                        WHERE image_id = ?
-                    ''', (image_id,))
-                    thumbnail_row = cursor.fetchone()
-                    thumbnail = thumbnail_row[0] if thumbnail_row else None
-                    
                     return {
                         "id": row[0],
                         "filename": row[1], "file_path": row[2], "file_size": row[3],
-                        "created_at": row[4], "modified_at": row[5], "thumbnail": thumbnail,
+                        "created_at": row[4], "modified_at": row[5],
                         "thumbnail_url": f"/api/thumbnail/{row[0]}",
                         "exif_data": json.loads(row[6]) if row[6] else {},
                         "directory_path": row[7], "width": row[8], "height": row[9],

@@ -74,3 +74,14 @@ class ImageService:
             return {"success": True, "message": "图片删除成功"}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def get_image_details(self, image_id: int) -> Dict[str, Any]:
+        """获取图片详细信息"""
+        try:
+            image = self.db_manager.get_image_by_id(int(image_id))
+            if not image:
+                return {"error": "图片不存在"}
+            
+            return {"success": True, "image": image}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

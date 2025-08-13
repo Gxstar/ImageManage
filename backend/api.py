@@ -65,3 +65,7 @@ class Api:
     def _build_directory_tree_fast(self, path: str, max_depth: int = 2, current_depth: int = 0) -> Dict[str, Any]:
         """快速构建目录树结构，支持深度限制和懒加载"""
         return self.directory_service._build_directory_tree_fast(path, max_depth, current_depth)
+
+    def get_image_details(self, image_id: int) -> Dict[str, Any]:
+        """获取图片详细信息"""
+        return self.image_service.get_image_details(image_id)
