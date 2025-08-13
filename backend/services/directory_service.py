@@ -114,8 +114,12 @@ class DirectoryService:
                 "path": path,
                 "type": "directory",
                 "children": [],
-                "has_subdirs": False
+                "has_subdirs": False,
+                "image_count": 0  # 添加图片计数
             }
+            
+            # 计算当前目录的图片数量（不包含子目录）
+            tree["image_count"] = self._get_directory_image_count(path)
             
             # 如果达到最大深度，只标记是否有子目录，不实际加载
             if current_depth >= max_depth:
@@ -157,5 +161,16 @@ class DirectoryService:
                 "type": "directory",
                 "error": str(e),
                 "children": [],
-                "has_subdirs": False
+                "has_subdirs": False,
+                "image_count": 0
             }
+    
+    def _get_directory_image_count(self, directory_path: str) -> int:
+        """获取单个目录内的图片数量（不包含子目录）"""
+        try:
+            from db.image_manager import ImageManager
+            image_manager = ImageManager()
+            return image_manager.get_image_count_in_directory(directory_path)
+        except Exception as e:
+            print(f"计算目录图片数量失败: {str(e)}")
+            return 0

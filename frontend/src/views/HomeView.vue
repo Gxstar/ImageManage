@@ -5,10 +5,12 @@
       :selectedDirectory="selectedDirectory" 
       :showAllPhotos="showAllPhotos"
       :showFavorites="showFavorites"
+      :photoCounts="photoCounts"
       @update:selectedDirectory="updateSelectedDirectory" 
       @showAllPhotos="handleShowAllPhotos" 
       @showFavorites="handleShowFavorites"
       @directoriesLoaded="handleDirectoriesLoaded"
+      @photoCountsChanged="loadPhotoCounts"
     />
     <!-- 照片网格 -->
     <PhotoGrid 
@@ -17,6 +19,7 @@
       :showAllPhotos="showAllPhotos" 
       :showFavorites="showFavorites"
       @select-image="updateSelectedImage" 
+      @image-count-changed="loadPhotoCounts"
       :has-info-panel="!!selectedImage" 
     />
     <!-- 信息面板 -->
@@ -31,7 +34,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import Sidebar from '../components/Sidebar.vue'
 import PhotoGrid from '../components/PhotoGrid.vue'
 import InfoPanel from '../components/InfoPanel.vue'
@@ -42,6 +45,15 @@ const selectedImage = ref(null)
 const showAllPhotos = ref(true)
 const showFavorites = ref(false)
 const photoGridRef = ref(null)
+const photoCounts = ref({
+  allPhotos: 0,
+  favorites: 0,
+  directories: {},
+  travel: 0,
+  food: 0,
+  birthday: 0,
+  family: 0
+})
 
 // 方法定义
 const updateSelectedDirectory = (path) => {
@@ -55,12 +67,14 @@ const updateSelectedImage = (image) => {
   selectedImage.value = image
 }
 
-// 当目录加载完成后，刷新全部照片
+// 当目录加载完成后，刷新全部照片和计数
 const handleDirectoriesLoaded = () => {
   if (photoGridRef.value) {
     // 目录加载完成后，刷新PhotoGrid
     photoGridRef.value.refresh()
   }
+  // 同时刷新照片计数
+  loadPhotoCounts()
 }
 
 const updateImageInfo = async (updatedImage) => {
@@ -94,6 +108,31 @@ const handleShowFavorites = () => {
   // 清空selectedDirectory，避免与收藏夹模式冲突
   selectedDirectory.value = ''
 }
+
+// 加载照片计数
+const loadPhotoCounts = async () => {
+  try {
+    const counts = await window.pywebview.api.get_photo_counts();
+    if (counts) {
+      photoCounts.value = {
+        allPhotos: counts.all_photos || 0,
+        favorites: counts.favorites || 0,
+        directories: counts.directories || {},
+        travel: counts.travel || 0,
+        food: counts.food || 0,
+        birthday: counts.birthday || 0,
+        family: counts.family || 0
+      };
+    }
+  } catch (error) {
+    console.error('加载照片计数失败:', error);
+  }
+}
+
+// 生命周期钩子
+onMounted(() => {
+  loadPhotoCounts();
+})
 </script>
 
 <style scoped>

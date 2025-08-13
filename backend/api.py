@@ -77,3 +77,7 @@ class Api:
     def get_image_details(self, image_id: int) -> Dict[str, Any]:
         """获取图片详细信息"""
         return self.image_service.get_image_details(image_id)
+
+    def get_photo_counts(self) -> Dict[str, Any]:
+        """获取各类照片计数"""
+        return self.image_service.get_photo_counts()

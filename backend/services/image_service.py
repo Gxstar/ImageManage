@@ -76,3 +76,40 @@ class ImageService:
             return {"success": True, "image": image}
         except Exception as e:
             return {"success": False, "error": str(e)}
+    
+    def get_photo_counts(self) -> Dict[str, Any]:
+        """获取各类照片计数"""
+        try:
+            # 获取所有图片总数
+            all_photos = self.db_manager.get_total_image_count()
+            
+            # 获取收藏图片数量
+            favorites = len(self.db_manager.get_favorite_images())
+            
+            # 获取目录图片计数（当前目录，不包含子目录）
+            directories = {}
+            all_dirs = self.db_manager.get_directories()
+            for dir_info in all_dirs:
+                dir_path = dir_info["path"]
+                # 使用单个目录计数，不包含子目录
+                count = self.db_manager.get_image_count_in_directory(dir_path)
+                directories[dir_path] = count
+            
+            # TODO: 后续可以根据标签或EXIF数据获取分类计数
+            travel = 0
+            food = 0
+            birthday = 0
+            family = 0
+            
+            return {
+                "success": True,
+                "all_photos": all_photos,
+                "favorites": favorites,
+                "directories": directories,
+                "travel": travel,
+                "food": food,
+                "birthday": birthday,
+                "family": family
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}

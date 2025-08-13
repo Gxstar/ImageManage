@@ -170,7 +170,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select-image'])
+const emit = defineEmits(['select-image', 'image-count-changed'])
 
 // 基础数据
 const images = ref([])
@@ -369,6 +369,8 @@ const toggleFavorite = async (image) => {
     if (result.success) {
       // 更新本地状态
       image.is_favorite = !image.is_favorite;
+      // 通知父组件图片计数可能已改变
+      emit('image-count-changed');
     } else {
       console.error('更新收藏状态失败:', result.error);
     }
