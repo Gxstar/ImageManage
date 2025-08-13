@@ -311,15 +311,13 @@ const toggleFavorite = async (image) => {
       console.error('图片ID不存在');
       return;
     }
-
-    const newFavoriteState = !image.is_favorite;
     
     // 调用后端API更新收藏状态
-    const result = await window.pywebview.api.toggle_image_favorite(imageId, newFavoriteState);
+    const result = await window.pywebview.api.toggle_image_favorite(imageId);
     
     if (result.success) {
       // 更新本地状态
-      image.is_favorite = newFavoriteState;
+      image.is_favorite = !image.is_favorite;
     } else {
       console.error('更新收藏状态失败:', result.error);
     }

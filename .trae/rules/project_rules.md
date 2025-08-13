@@ -2,3 +2,4 @@
 2.注意使用组合式api的方式，不能使用选项式api的方式。
 3.前端目录为frontend，前端使用pnpm进行管理。
 4.后端目录为backend，后端使用uv进行python管理。
+5.fastapi仅提供获取原始图片数据功能（get_image）以避免前端无法访问本地图片，其他功能函数不再由fastapi提供，而是由python编写后直接由前端通过pywebview的通信机制来调用。

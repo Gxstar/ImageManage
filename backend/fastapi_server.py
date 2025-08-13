@@ -11,7 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from db.image_manager import ImageManager
-from db.directory_manager import DirectoryManager
 
 
 def read_file_safely(file_path: str) -> bytes:
@@ -40,20 +39,6 @@ app.add_middleware(
 )
 
 image_manager = ImageManager()
-directory_manager = DirectoryManager()
-
-@app.get("/api/thumbnail/{image_id}")
-async def get_thumbnail(image_id: int):
-    """获取图片缩略图"""
-    try:
-        thumbnail = image_manager.get_thumbnail(image_id)
-        if thumbnail:
-            return Response(content=thumbnail, media_type="image/jpeg")
-        else:
-            return Response(content=b'', status_code=404)
-    except Exception as e:
-        print(f"获取缩略图失败: {str(e)}")
-        return Response(content=b'', status_code=500)
 
 @app.get("/api/image/{image_id}")
 async def get_image(image_id: int):
@@ -71,80 +56,14 @@ async def get_image(image_id: int):
     
     return Response(content=image_data, media_type=media_type)
 
-@app.get("/api/image/path")
-async def get_image_by_path(file_path: str):
-    """通过文件路径获取图片"""
-    decoded_path = urllib.parse.unquote(file_path)
+@app.get("/api/thumbnail/{image_id}")
+async def get_thumbnail(image_id: int):
+    """获取图片缩略图"""
+    thumbnail_data = image_manager.get_thumbnail_by_id(image_id)
+    if not thumbnail_data:
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
     
-    # 安全检查：确保路径在允许的目录内
-    allowed_dirs = directory_manager.get_all_directories()
-    is_allowed = any(
-        os.path.abspath(decoded_path).startswith(os.path.abspath(dir_path))
-        for dir_path in allowed_dirs
-    )
-    if not is_allowed:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    image_data = read_file_safely(decoded_path)
-    media_type = get_media_type(decoded_path)
-    
-    return Response(content=image_data, media_type=media_type)
-
-@app.get("/api/image/path/{image_id}")
-async def get_image_path(image_id: int):
-    """获取图片文件路径"""
-    image = image_manager.get_image_by_id(image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
-    
-    file_path = image.get('file_path')
-    if not file_path or not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Image file not found")
-    
-    return {"file_path": file_path}
-
-@app.get("/api/image/details/{image_id}")
-async def get_image_details(image_id: int):
-    """获取图片详细信息，包括EXIF数据"""
-    image = image_manager.get_image_by_id(image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
-    
-    # 移除thumbnail字段，避免序列化问题
-    image.pop('thumbnail', None)
-    
-    return image
-
-@app.get("/api/images")
-async def get_images(limit: int = 100, offset: int = 0):
-    """获取图片列表"""
-    images = image_manager.get_images(limit=limit, offset=offset)
-    return {"images": images, "total": len(images)}
-
-@app.get("/api/directories")
-async def get_directories():
-    """获取所有目录"""
-    return {"directories": directory_manager.get_all_directories()}
-
-@app.post("/api/directories")
-async def add_directory(path: str):
-    """添加目录"""
-    if not os.path.exists(path):
-        raise HTTPException(status_code=400, detail="Directory does not exist")
-    
-    return {"directory": directory_manager.add_directory(path)}
-
-@app.delete("/api/directories/{directory_id}")
-async def remove_directory(directory_id: int):
-    """删除目录"""
-    if not directory_manager.remove_directory(directory_id):
-        raise HTTPException(status_code=404, detail="Directory not found")
-    return {"success": True}
-
-@app.get("/api/health")
-async def health_check():
-    """健康检查接口"""
-    return {"status": "healthy", "message": "FastAPI server is running"}
+    return Response(content=thumbnail_data, media_type="image/jpeg")
 
 class FastAPIServer:
     def __init__(self, host="127.0.0.1", port=8324):

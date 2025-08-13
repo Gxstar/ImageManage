@@ -255,6 +255,26 @@ class ImageManager(BaseDB):
             print(f"更新图片收藏状态失败: {str(e)}")
             return False
     
+    def toggle_favorite(self, image_id: int) -> bool:
+        """切换图片收藏状态"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # 先获取当前收藏状态
+                cursor.execute('SELECT is_favorite FROM image_metadata WHERE id = ?', (image_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return False
+                
+                # 切换状态
+                new_favorite = not row[0]
+                cursor.execute('UPDATE image_metadata SET is_favorite = ? WHERE id = ?', (int(new_favorite), image_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"切换图片收藏状态失败: {str(e)}")
+            return False
+    
     def _update_xmp_rating(self, file_path: str, rating: int) -> bool:
         """更新图片XMP中的评分信息"""
         if not HAS_PYEXIV2:

@@ -47,6 +47,9 @@ class DatabaseManager:
     def update_image_rating(self, *args, **kwargs):
         return self.image_manager.update_image_rating(*args, **kwargs)
 
+    def toggle_favorite(self, *args, **kwargs):
+        return self.image_manager.toggle_favorite(*args, **kwargs)
+
     def update_image(self, *args, **kwargs):
         return self.image_manager.update_image(*args, **kwargs)
 
