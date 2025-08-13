@@ -45,8 +45,13 @@
           <p class="text-sm">{{ getExifData('LensModel') || 'N/A' }}</p>
         </div>
         <div>
-          <h3 class="text-xs font-medium text-gray-500">焦距</h3>
-          <p class="text-sm">{{ getExifData('FocalLength') || 'N/A' }}mm</p>
+          <h3 class="text-xs font-medium text-gray-500">焦距（等效）</h3>
+          <p class="text-sm">
+            {{ Math.round(parseFloat(getExifData('FocalLength')) || 0) || 'N/A' }}mm
+            <span v-if="getEquivalentFocalLength()" class="text-gray-400">
+              ({{ getEquivalentFocalLength() }}mm)
+            </span>
+          </p>
         </div>
         <div>
           <h3 class="text-xs font-medium text-gray-500">光圈</h3>
@@ -230,6 +235,18 @@ const formatShutterSpeed = (exposureTime) => {
     // 大于等于1秒时显示为整数
     return `${Math.round(time)}s`;
   }
+};
+
+// 获取等效焦距
+const getEquivalentFocalLength = () => {
+  // 直接使用EXIF中的等效焦距信息
+  const focalLengthIn35mmFilm = getExifData('FocalLengthIn35mmFilm');
+  if (focalLengthIn35mmFilm) {
+    return Math.round(parseFloat(focalLengthIn35mmFilm));
+  }
+  
+  // 如果没有等效焦距信息，返回null
+  return null;
 };
 
 // 格式化尺寸
