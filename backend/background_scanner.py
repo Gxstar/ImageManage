@@ -3,13 +3,14 @@ import threading
 import time
 import logging
 from pathlib import Path
-from typing import List, Tuple, Dict, Set
+from typing import List, Dict
 import hashlib
 
 from PIL import Image
 
-from db import DatabaseManager
+from container import dependencies
 from image_utils import ImageProcessor
+from exceptions import DatabaseException, ImageProcessingException, format_error_response
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,7 @@ class BackgroundScanner:
     """智能后台图片扫描器 - 支持增量扫描和文件系统监控"""
     
     def __init__(self):
-        self.db_manager = DatabaseManager()
+        self.db_manager = dependencies.get_db_manager()
         self.supported_formats = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
         self.scan_thread = None
         self.is_running = False
@@ -66,6 +67,12 @@ class BackgroundScanner:
                 else:
                     time.sleep(300)  # 无变化时5分钟后检查
                     
+            except DatabaseException as e:
+                logger.error(f"数据库错误: {e}")
+                time.sleep(300)
+            except ImageProcessingException as e:
+                logger.error(f"图片处理错误: {e}")
+                time.sleep(60)
             except Exception as e:
                 logger.error(f"后台扫描出错: {e}")
                 time.sleep(300)
@@ -101,6 +108,8 @@ class BackgroundScanner:
                 for filename in filenames:
                     if Path(filename).suffix.lower() in self.supported_formats:
                         files.append(os.path.join(root, filename))
+        except DatabaseException as e:
+            logger.error(f"数据库错误 - 获取目录文件列表失败: {directory_path} - {e}")
         except Exception as e:
             logger.error(f"获取目录文件列表失败: {directory_path} - {e}")
         return files
@@ -144,6 +153,9 @@ class BackgroundScanner:
             
             return file_changed
             
+        except DatabaseException as e:
+            logger.error(f"数据库错误 - 检查文件变化失败: {file_path} - {e}")
+            return True  # 出错时假设文件有变化
         except Exception as e:
             logger.error(f"检查文件变化失败: {file_path} - {e}")
             return True  # 出错时假设文件有变化
@@ -156,6 +168,10 @@ class BackgroundScanner:
             try:
                 if self._process_single_image(file_info['path']):
                     total_processed += 1
+            except DatabaseException as e:
+                logger.error(f"数据库错误 - 处理文件失败: {file_info['path']} - {e}")
+            except ImageProcessingException as e:
+                logger.error(f"图片处理错误 - 处理文件失败: {file_info['path']} - {e}")
             except Exception as e:
                 logger.error(f"处理文件失败: {file_info['path']} - {e}")
         
@@ -184,10 +200,6 @@ class BackgroundScanner:
         logger.info(f"全量扫描完成，共处理 {total_processed} 个文件，耗时{scan_duration:.2f}秒")
         
         return total_processed
-    
-    def _process_single_image(self, file_path: str) -> bool:
-        """处理单个图片文件（已废弃，使用 _process_single_image 替代）"""
-        return self._process_single_image(file_path)
     
     def _process_single_image(self, file_path: str) -> bool:
         """处理单个图片文件，优化版本"""
@@ -260,6 +272,12 @@ class BackgroundScanner:
                 
             return True
             
+        except DatabaseException as e:
+            logger.error(f"数据库错误 - 跳过文件 {file_path}: {str(e)}")
+            return False
+        except ImageProcessingException as e:
+            logger.warning(f"图片处理错误 - 跳过文件 {file_path}: {str(e)}")
+            return False
         except Exception as e:
             logger.debug(f"跳过文件 {file_path}: {str(e)}")
             return False

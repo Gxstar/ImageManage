@@ -12,6 +12,8 @@ try:
 except ImportError:
     PIL_AVAILABLE = False
 
+from exceptions import ImageProcessingException, ValidationException
+
 class ImageProcessor:
     @staticmethod
     def generate_thumbnail(image_path: str, max_size: tuple = (200, 200)) -> bytes:
@@ -58,6 +60,12 @@ class ImageProcessor:
                 
                 return buffer.getvalue()
                 
+        except ValidationException as e:
+            logging.getLogger(__name__).error(f"验证错误 - 生成缩略图失败: {str(e)}")
+            return None
+        except ImageProcessingException as e:
+            logging.getLogger(__name__).error(f"图片处理错误 - 生成缩略图失败: {str(e)}")
+            return None
         except Exception as e:
             logging.getLogger(__name__).error(f"生成缩略图失败: {str(e)}")
             return None
@@ -104,6 +112,10 @@ class ImageProcessor:
                         "Mode": img.mode
                     }}
                     
+        except ValidationException as e:
+            return {"error": f"验证错误 - 获取EXIF信息失败: {str(e)}"}
+        except ImageProcessingException as e:
+            return {"error": f"图片处理错误 - 获取EXIF信息失败: {str(e)}"}
         except Exception as e:
             return {"error": f"获取EXIF信息失败: {str(e)}"}
     

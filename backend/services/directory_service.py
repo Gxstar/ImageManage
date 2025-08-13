@@ -1,21 +1,26 @@
 """目录服务模块"""
 import os
 import webview
-from typing import Dict, Any, List
+from typing import Dict, Any
 
-from db import DatabaseManager
+from container import dependencies
+from exceptions import DatabaseException, ValidationException, format_error_response
 
 class DirectoryService:
     def __init__(self):
-        self.db_manager = DatabaseManager()
+        self.db_manager = dependencies.get_db_manager()
     
     def get_directories(self) -> Dict[str, Any]:
         """获取所有已保存的目录"""
         try:
             directories = self.db_manager.get_directories()
-            return {"directories": directories}
+            return {"success": True, "directories": directories}
         except Exception as e:
-            return {"error": str(e), "directories": []}
+            return format_error_response(DatabaseException(
+                operation="get_directories",
+                message="获取目录列表失败",
+                details={"error": str(e)}
+            ))
     
     def add_directory(self) -> Dict[str, Any]:
         """添加新的图片目录 - 使用原生文件夹选择对话框"""
@@ -27,7 +32,7 @@ class DirectoryService:
             )
             
             if not selected_folders:
-                return {"success": False, "error": "用户取消了选择"}
+                return {"success": False, "message": "用户取消了选择"}
             
             # 处理create_file_dialog的返回值
             if isinstance(selected_folders, tuple):
@@ -38,21 +43,37 @@ class DirectoryService:
                 directory_path = str(selected_folders)
             
             if not os.path.exists(directory_path):
-                return {"success": False, "error": "目录不存在"}
-            #截取目录的最终名字作为名字
+                raise ValidationException(
+                    field="directory_path",
+                    message="指定的目录不存在",
+                    details={"path": directory_path}
+                )
+            
+            # 截取目录的最终名字作为名字
             dir_name = os.path.basename(directory_path)
             self.db_manager.save_directory(directory_path, dir_name)
             return {"success": True, "message": "目录添加成功", "path": directory_path}
+            
+        except ValidationException as e:
+            return format_error_response(e)
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return format_error_response(DatabaseException(
+                operation="add_directory",
+                message="添加目录失败",
+                details={"error": str(e)}
+            ))
     
     def remove_directory(self, directory_path: str) -> Dict[str, Any]:
-        """移除目录"""
+        """删除指定的目录"""
         try:
             self.db_manager.remove_directory(directory_path)
-            return {"success": True, "message": "目录移除成功"}
+            return {"success": True, "message": "目录删除成功"}
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return format_error_response(DatabaseException(
+                operation="remove_directory",
+                message="删除目录失败",
+                details={"path": directory_path, "error": str(e)}
+            ))
     
     def get_directory_tree(self, directory_path: str = None, max_depth: int = 2) -> Dict[str, Any]:
         """获取目录树结构，支持深度限制和性能优化"""
@@ -65,16 +86,27 @@ class DirectoryService:
                     root_path = dir_info["path"]
                     if os.path.exists(root_path):
                         tree.append(self._build_directory_tree_fast(root_path, max_depth))
-                return {"tree": tree}
+                return {"success": True, "tree": tree}
             else:
                 # 获取指定目录的树
                 resolved_path = self._resolve_directory_path(directory_path)
                 if not os.path.exists(resolved_path):
-                    return {"error": "目录不存在", "tree": []}
+                    raise ValidationException(
+                        field="directory_path",
+                        message="指定的目录不存在",
+                        details={"path": resolved_path}
+                    )
                 tree = self._build_directory_tree_fast(resolved_path, max_depth)
-                return {"tree": tree}
+                return {"success": True, "tree": tree}
+                
+        except ValidationException as e:
+            return format_error_response(e)
         except Exception as e:
-            return {"error": str(e), "tree": []}
+            return format_error_response(DatabaseException(
+                operation="get_directory_tree",
+                message="获取目录树失败",
+                details={"error": str(e)}
+            ))
 
     def _resolve_directory_path(self, directory_path: str) -> str:
         """将前端传递的相对路径转换为绝对路径"""
@@ -103,6 +135,7 @@ class DirectoryService:
             return directory_path
             
         except Exception as e:
+            # 记录日志但不抛出异常，保持向后兼容
             print(f"解析目录路径失败: {str(e)}")
             return directory_path
 
@@ -168,9 +201,8 @@ class DirectoryService:
     def _get_directory_image_count(self, directory_path: str) -> int:
         """获取单个目录内的图片数量（不包含子目录）"""
         try:
-            from db.image_manager import ImageManager
-            image_manager = ImageManager()
-            return image_manager.get_image_count_in_directory(directory_path)
+            return self.db_manager.get_image_count_in_directory(directory_path)
         except Exception as e:
+            # 记录日志但不抛出异常，保持向后兼容
             print(f"计算目录图片数量失败: {str(e)}")
             return 0

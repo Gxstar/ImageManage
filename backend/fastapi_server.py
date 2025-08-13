@@ -10,16 +10,33 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from db.image_manager import ImageManager
+from container import dependencies
+from exceptions import DatabaseException, ImageProcessingException, format_error_response
 
 
 def read_file_safely(file_path: str) -> bytes:
     """安全地读取文件内容"""
     try:
+        if not os.path.exists(file_path):
+            raise ImageProcessingException(
+                operation="read_file",
+                message="文件不存在",
+                details={"file_path": file_path}
+            )
+        
+        if not os.access(file_path, os.R_OK):
+            raise ImageProcessingException(
+                operation="read_file",
+                message="文件无法读取",
+                details={"file_path": file_path, "error": "权限不足"}
+            )
+            
         with open(file_path, 'rb') as f:
             return f.read()
+    except ImageProcessingException as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"File not found or cannot be read: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"读取文件时发生错误: {str(e)}")
 
 
 def get_media_type(file_path: str) -> str:
@@ -38,32 +55,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-image_manager = ImageManager()
+image_manager = dependencies.get_db_manager()
 
 @app.get("/api/image/{image_id}")
 async def get_image(image_id: int):
     """获取原始图片数据"""
-    image = image_manager.get_image_by_id(image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
-    
-    file_path = image.get('file_path')
-    if not file_path:
-        raise HTTPException(status_code=404, detail="Image file path not found")
-    
-    image_data = read_file_safely(file_path)
-    media_type = get_media_type(file_path)
-    
-    return Response(content=image_data, media_type=media_type)
+    try:
+        if not image_id or image_id <= 0:
+            raise HTTPException(status_code=400, detail="无效的图片ID")
+            
+        image = image_manager.get_image_by_id(image_id)
+        if not image:
+            raise HTTPException(status_code=404, detail="图片不存在")
+        
+        file_path = image.get('file_path')
+        if not file_path:
+            raise HTTPException(status_code=404, detail="图片文件路径未找到")
+        
+        image_data = read_file_safely(file_path)
+        media_type = get_media_type(file_path)
+        
+        return Response(content=image_data, media_type=media_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取图片时发生错误: {str(e)}")
 
 @app.get("/api/thumbnail/{image_id}")
 async def get_thumbnail(image_id: int):
     """获取图片缩略图"""
-    thumbnail_data = image_manager.get_thumbnail_by_id(image_id)
-    if not thumbnail_data:
-        raise HTTPException(status_code=404, detail="Thumbnail not found")
-    
-    return Response(content=thumbnail_data, media_type="image/jpeg")
+    try:
+        if not image_id or image_id <= 0:
+            raise HTTPException(status_code=400, detail="无效的图片ID")
+            
+        thumbnail_data = image_manager.get_thumbnail_by_id(image_id)
+        if not thumbnail_data:
+            raise HTTPException(status_code=404, detail="缩略图不存在")
+        
+        return Response(content=thumbnail_data, media_type="image/jpeg")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取缩略图时发生错误: {str(e)}")
 
 class FastAPIServer:
     def __init__(self, host="127.0.0.1", port=8324):

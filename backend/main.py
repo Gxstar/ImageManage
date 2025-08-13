@@ -1,10 +1,8 @@
 import threading
-
 import webview
-
-from api import Api
-from background_scanner import background_scanner
 from fastapi_server import fastapi_server
+from background_scanner import background_scanner
+from api import Api
 
 def initialize_background_tasks():
     """初始化后台任务"""

@@ -1,12 +1,13 @@
 """图片服务模块"""
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 
-from db import DatabaseManager
+from container import dependencies
+from exceptions import DatabaseException, ValidationException, format_error_response
 
 class ImageService:
     def __init__(self):
-        self.db_manager = DatabaseManager()
+        self.db_manager = dependencies.get_db_manager()
     
     def get_all_images(self, limit: int = None, offset: int = 0) -> Dict[str, Any]:
         """获取所有图片 - 支持分页"""
@@ -14,68 +15,87 @@ class ImageService:
             images = self.db_manager.get_all_images(limit=int(limit) if limit else None, offset=int(offset))
             total = self.db_manager.get_total_image_count()
             
-            return {"images": images, "total": total, "offset": int(offset)}
+            return {"success": True, "images": images, "total": total, "offset": int(offset)}
         except Exception as e:
-            return {"error": str(e), "images": [], "total": 0, "offset": 0}
+            return format_error_response(DatabaseException(
+                operation="get_all_images",
+                message="获取图片列表失败",
+                details={"error": str(e), "limit": limit, "offset": offset}
+            ))
 
     def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0) -> Dict[str, Any]:
         """获取指定目录下的所有图片 - 支持分页"""
         try:
+            if not directory_path:
+                raise ValidationException(
+                    field="directory_path",
+                    message="目录路径不能为空",
+                    details={"path": directory_path}
+                )
+                
             images = self.db_manager.get_images_in_directory(directory_path, limit=limit, offset=offset)
             total = self.db_manager.get_image_count_in_directory(directory_path)
             
-            return {"images": images, "total": total, "offset": int(offset)}
+            return {"success": True, "images": images, "total": total, "offset": int(offset)}
+        except ValidationException as e:
+            return format_error_response(e)
         except Exception as e:
-            return {"images": [], "total": 0, "error": str(e)}
+            return format_error_response(DatabaseException(
+                operation="get_images_in_directory",
+                message="获取目录图片失败",
+                details={"error": str(e), "directory_path": directory_path, "limit": limit, "offset": offset}
+            ))
     
-    def _resolve_directory_path(self, directory_path: str) -> str:
-        """将前端传递的相对路径转换为绝对路径"""
-        try:
-            # 如果已经是绝对路径，直接返回
-            if os.path.isabs(directory_path):
-                return directory_path
-            
-            # 获取所有已保存的目录
-            directories = self.db_manager.get_directories()
-            
-            # 查找匹配的目录
-            for dir_info in directories:
-                base_path = dir_info["path"]
-                
-                # 检查是否是子目录
-                full_path = os.path.join(base_path, directory_path)
-                if os.path.exists(full_path):
-                    return full_path
-                
-                # 检查是否是直接子目录
-                if directory_path in base_path:
-                    return base_path
-            
-            # 如果找不到匹配的目录，返回原始路径
-            return directory_path
-            
-        except Exception as e:
-            print(f"解析目录路径失败: {str(e)}")
-            return directory_path
+
     
     def delete_image(self, file_path: str) -> Dict[str, Any]:
         """删除图片记录"""
         try:
+            if not file_path:
+                raise ValidationException(
+                    field="file_path",
+                    message="文件路径不能为空",
+                    details={"path": file_path}
+                )
+                
             self.db_manager.delete_image(file_path)
             return {"success": True, "message": "图片删除成功"}
+        except ValidationException as e:
+            return format_error_response(e)
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return format_error_response(DatabaseException(
+                operation="delete_image",
+                message="删除图片失败",
+                details={"path": file_path, "error": str(e)}
+            ))
 
     def get_image_details(self, image_id: int) -> Dict[str, Any]:
         """获取图片详细信息"""
         try:
+            if not image_id or int(image_id) <= 0:
+                raise ValidationException(
+                    field="image_id",
+                    message="图片ID无效",
+                    details={"image_id": image_id}
+                )
+                
             image = self.db_manager.get_image_by_id(int(image_id))
             if not image:
-                return {"error": "图片不存在"}
+                raise ValidationException(
+                    field="image_id",
+                    message="图片不存在",
+                    details={"image_id": image_id}
+                )
             
             return {"success": True, "image": image}
+        except ValidationException as e:
+            return format_error_response(e)
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return format_error_response(DatabaseException(
+                operation="get_image_details",
+                message="获取图片详情失败",
+                details={"image_id": image_id, "error": str(e)}
+            ))
     
     def get_photo_counts(self) -> Dict[str, Any]:
         """获取各类照片计数"""
@@ -112,4 +132,8 @@ class ImageService:
                 "family": family
             }
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return format_error_response(DatabaseException(
+                operation="get_photo_counts",
+                message="获取照片计数失败",
+                details={"error": str(e)}
+            ))

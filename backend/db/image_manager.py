@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from .base import BaseDB
+from exceptions import DatabaseException, ImageProcessingException
 
 class ImageManager(BaseDB):
     """图片管理类"""
@@ -56,9 +57,18 @@ class ImageManager(BaseDB):
                 
                 conn.commit()
             return True
-        except Exception as e:
-            print(f"添加图片失败: {str(e)}")
-            return False
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="add_image",
+                message=f"添加图片到数据库失败: {str(e)}",
+                details={"filename": filename, "file_path": file_path}
+            )
+        except json.JSONEncodeError as e:
+            raise ImageProcessingException(
+                operation="serialize_exif",
+                message=f"EXIF数据序列化失败: {str(e)}",
+                details={"filename": filename}
+            )
     
     def get_image_by_path(self, file_path: str) -> Optional[Dict[str, Any]]:
         """根据文件路径获取图片信息"""
@@ -95,9 +105,18 @@ class ImageManager(BaseDB):
                         "rating": row[12], "added_at": row[13]
                     }
                 return None
-        except Exception as e:
-            print(f"获取图片失败: {str(e)}")
-            return None
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_image_by_path",
+                message=f"查询图片信息失败: {str(e)}",
+                details={"file_path": file_path}
+            )
+        except json.JSONDecodeError as e:
+            raise ImageProcessingException(
+                operation="parse_exif",
+                message=f"EXIF数据解析失败: {str(e)}",
+                details={"file_path": file_path}
+            )
     
     def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0,
                                sort_by: str = "modified_at", sort_order: str = "desc") -> List[Dict[str, Any]]:
@@ -138,9 +157,18 @@ class ImageManager(BaseDB):
                         "rating": row[12], "added_at": row[13]
                     })
                 return images
-        except Exception as e:
-            print(f"获取目录图片失败: {str(e)}")
-            return []
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_images_in_directory",
+                message=f"获取目录图片失败: {str(e)}",
+                details={"directory_path": directory_path, "limit": limit, "offset": offset}
+            )
+        except json.JSONDecodeError as e:
+            raise ImageProcessingException(
+                operation="parse_exif",
+                message=f"EXIF数据解析失败: {str(e)}",
+                details={"directory_path": directory_path}
+            )
 
     def get_image_count_in_directory(self, directory_path: str) -> int:
         """获取指定目录下的图片总数（不包括子目录）"""
@@ -152,9 +180,12 @@ class ImageManager(BaseDB):
                 ''', (directory_path,))
                 result = cursor.fetchone()
                 return result[0] if result else 0
-        except Exception as e:
-            print(f"获取目录图片数量失败: {str(e)}")
-            return 0
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_image_count_in_directory",
+                message=f"获取目录图片数量失败: {str(e)}",
+                details={"directory_path": directory_path}
+            )
     
     def get_all_images(self, limit: int = None, offset: int = 0,
                       sort_by: str = "modified_at", sort_order: str = "desc") -> List[Dict[str, Any]]:
@@ -194,9 +225,17 @@ class ImageManager(BaseDB):
                     })
                 
                 return images
-        except Exception as e:
-            print(f"获取所有图片失败: {str(e)}")
-            return []
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_all_images",
+                message=f"获取所有图片失败: {str(e)}",
+                details={"limit": limit, "offset": offset, "sort_by": sort_by, "sort_order": sort_order}
+            )
+        except json.JSONDecodeError as e:
+            raise ImageProcessingException(
+                operation="parse_exif",
+                message=f"EXIF数据解析失败: {str(e)}"
+            )
 
     def get_total_image_count(self) -> int:
         """获取所有图片的总数"""
@@ -206,9 +245,11 @@ class ImageManager(BaseDB):
                 cursor.execute('SELECT COUNT(*) FROM image_metadata')
                 result = cursor.fetchone()
                 return result[0] if result else 0
-        except Exception as e:
-            print(f"获取图片总数失败: {str(e)}")
-            return 0
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_total_image_count",
+                message=f"获取图片总数失败: {str(e)}"
+            )
     
     def delete_image(self, file_path: str) -> bool:
         """从数据库中删除图片"""
@@ -232,9 +273,12 @@ class ImageManager(BaseDB):
                 
                 conn.commit()
                 return True
-        except Exception as e:
-            print(f"删除图片失败: {str(e)}")
-            return False
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="delete_image",
+                message=f"删除图片失败: {str(e)}",
+                details={"file_path": file_path}
+            )
     
     def update_image_favorite(self, image_id: int, is_favorite: bool) -> bool:
         """更新图片收藏状态"""
@@ -244,9 +288,12 @@ class ImageManager(BaseDB):
                 cursor.execute('UPDATE image_metadata SET is_favorite = ? WHERE id = ?', (int(is_favorite), image_id))
                 conn.commit()
                 return cursor.rowcount > 0
-        except Exception as e:
-            print(f"更新图片收藏状态失败: {str(e)}")
-            return False
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="update_image_favorite",
+                message=f"更新图片收藏状态失败: {str(e)}",
+                details={"image_id": image_id, "is_favorite": is_favorite}
+            )
     
     def toggle_favorite(self, image_id: int) -> bool:
         """切换图片收藏状态"""
@@ -264,9 +311,12 @@ class ImageManager(BaseDB):
                 cursor.execute('UPDATE image_metadata SET is_favorite = ? WHERE id = ?', (int(new_favorite), image_id))
                 conn.commit()
                 return cursor.rowcount > 0
-        except Exception as e:
-            print(f"切换图片收藏状态失败: {str(e)}")
-            return False
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="toggle_favorite",
+                message=f"切换图片收藏状态失败: {str(e)}",
+                details={"image_id": image_id}
+            )
     
     def update_image_rating(self, image_id: int, rating: int) -> bool:
         """更新图片评分（仅更新数据库）"""
@@ -284,9 +334,12 @@ class ImageManager(BaseDB):
             print(f"成功更新图片评分: ID={image_id}, 评分={rating}")
             return True
             
-        except Exception as e:
-            print(f"更新图片评分失败: {str(e)}")
-            return False
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="update_image_rating",
+                message=f"更新图片评分失败: {str(e)}",
+                details={"image_id": image_id, "rating": rating}
+            )
     
     def update_image(self, file_path: str, image_data: Dict[str, Any]) -> bool:
         """更新图片信息"""
@@ -354,9 +407,18 @@ class ImageManager(BaseDB):
                 
                 conn.commit()
                 return True
-        except Exception as e:
-            print(f"更新图片失败: {str(e)}")
-            return False
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="update_image",
+                message=f"更新图片失败: {str(e)}",
+                details={"file_path": file_path}
+            )
+        except json.JSONEncodeError as e:
+            raise ImageProcessingException(
+                operation="serialize_exif",
+                message=f"EXIF数据序列化失败: {str(e)}",
+                details={"file_path": file_path}
+            )
     
     def get_favorite_images(self) -> List[Dict[str, Any]]:
         """获取收藏的图片"""
@@ -397,9 +459,16 @@ class ImageManager(BaseDB):
                         "rating": row[12], "added_at": row[13]
                     })
                 return images
-        except Exception as e:
-            print(f"获取收藏图片失败: {str(e)}")
-            return []
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_favorite_images",
+                message=f"获取收藏图片失败: {str(e)}"
+            )
+        except json.JSONDecodeError as e:
+            raise ImageProcessingException(
+                operation="parse_exif",
+                message=f"EXIF数据解析失败: {str(e)}"
+            )
 
     def get_image_by_id(self, image_id: int) -> Optional[Dict[str, Any]]:
         """根据ID获取图片信息"""
@@ -426,9 +495,17 @@ class ImageManager(BaseDB):
                         "rating": row[12], "added_at": row[13]
                     }
                 return None
-        except Exception as e:
-            print(f"根据ID获取图片失败: {str(e)}")
-            return None
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_image_by_id",
+                message=f"根据ID获取图片失败: {str(e)}",
+                details={"image_id": image_id}
+            )
+        except json.JSONDecodeError as e:
+            raise ImageProcessingException(
+                operation="parse_exif",
+                message=f"EXIF数据解析失败: {str(e)}"
+            )
 
     def get_thumbnail(self, image_id: int) -> Optional[bytes]:
         """获取图片缩略图"""
@@ -438,9 +515,12 @@ class ImageManager(BaseDB):
                 cursor.execute('SELECT thumbnail FROM image_thumbnails WHERE image_id = ?', (image_id,))
                 row = cursor.fetchone()
                 return row[0] if row else None
-        except Exception as e:
-            print(f"获取缩略图失败: {str(e)}")
-            return None
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_thumbnail",
+                message=f"获取缩略图失败: {str(e)}",
+                details={"image_id": image_id}
+            )
 
     def get_thumbnail_by_id(self, image_id: int) -> Optional[bytes]:
         """根据ID获取缩略图bytes数据"""
@@ -455,6 +535,9 @@ class ImageManager(BaseDB):
                 if row and row[0]:
                     return row[0]  # 直接返回bytes数据
                 return None
-        except Exception as e:
-            print(f"获取缩略图失败: {str(e)}")
-            return None
+        except sqlite3.Error as e:
+            raise DatabaseException(
+                operation="get_thumbnail_by_id",
+                message=f"获取缩略图失败: {str(e)}",
+                details={"image_id": image_id}
+            )

@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from typing import Any, Dict, List, Optional
+from exceptions import DatabaseException
 
 class BaseDB:
     """基础数据库连接类"""
@@ -123,6 +124,9 @@ class BaseDB:
             print("数据迁移完成，旧表已重命名为images_backup")
             
         except Exception as e:
-            print(f"数据迁移失败: {str(e)}")
             conn.rollback()
-            raise
+            raise DatabaseException(
+                operation="migrate_old_table",
+                message=f"数据迁移失败: {str(e)}",
+                details={"error": str(e)}
+            )
