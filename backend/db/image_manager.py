@@ -4,13 +4,6 @@ import sqlite3
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-try:
-    import pyexiv2
-    HAS_PYEXIV2 = True
-except ImportError:
-    HAS_PYEXIV2 = False
-    print("警告: pyexiv2未安装，无法修改图片XMP信息")
-
 from .base import BaseDB
 
 class ImageManager(BaseDB):
@@ -163,9 +156,9 @@ class ImageManager(BaseDB):
             print(f"获取目录图片数量失败: {str(e)}")
             return 0
     
-    def get_all_images(self, limit: Optional[int] = None, offset: int = 0, 
+    def get_all_images(self, limit: int = None, offset: int = 0,
                       sort_by: str = "modified_at", sort_order: str = "desc") -> List[Dict[str, Any]]:
-        """获取所有图片，支持分页和排序"""
+        """获取所有图片 - 支持分页和排序"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -174,18 +167,18 @@ class ImageManager(BaseDB):
                 order_by = f"{sort_by} {sort_order.upper()}"
                 
                 query = f'''
-                    SELECT m.id, m.filename, m.file_path, m.file_size, m.created_at, m.modified_at, 
-                           m.exif_data, m.directory_path, m.width, m.height, 
+                    SELECT m.id, m.filename, m.file_path, m.file_size, m.created_at, m.modified_at,
+                           m.exif_data, m.directory_path, m.width, m.height,
                            m.format, m.is_favorite, m.rating, m.added_at
                     FROM image_metadata m
                     ORDER BY m.{order_by}
                 '''
-                
+
                 params = []
                 if limit is not None and limit > 0:
                     query += " LIMIT ? OFFSET ?"
                     params.extend([limit, offset])
-                
+
                 cursor.execute(query, params)
                 
                 images = []
@@ -275,45 +268,9 @@ class ImageManager(BaseDB):
             print(f"切换图片收藏状态失败: {str(e)}")
             return False
     
-    def _update_xmp_rating(self, file_path: str, rating: int) -> bool:
-        """更新图片XMP中的评分信息"""
-        if not HAS_PYEXIV2:
-            print("警告: pyexiv2未安装，无法修改图片XMP信息")
-            return False
-            
-        try:
-            with pyexiv2.Image(file_path,encoding='GBK') as metadata:
-            
-                # 读取现有XMP数据
-                xmp_data = metadata.read_xmp()
-                
-                # 更新XMP中的评分
-                xmp_data['Xmp.xmp.Rating'] = str(rating)
-                
-                # 写入修改后的XMP数据
-                metadata.modify_xmp(xmp_data)
-                
-                print(f"成功更新图片XMP评分: {file_path} -> {rating}")
-                return True
-            
-        except Exception as e:
-            print(f"更新图片XMP评分失败: {file_path} - {str(e)}")
-            return False
-
     def update_image_rating(self, image_id: int, rating: int) -> bool:
-        """更新图片评分（同时更新数据库和XMP信息）"""
+        """更新图片评分（仅更新数据库）"""
         try:
-            # 先获取图片文件路径
-            image = self.get_image_by_id(image_id)
-            if not image:
-                print(f"找不到图片ID: {image_id}")
-                return False
-                
-            file_path = image.get('file_path')
-            if not file_path or not os.path.exists(file_path):
-                print(f"图片文件不存在: {file_path}")
-                return False
-            
             # 更新数据库
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -324,14 +281,7 @@ class ImageManager(BaseDB):
                     print(f"数据库中未找到图片ID: {image_id}")
                     return False
             
-            # 更新图片XMP信息
-            xmp_updated = self._update_xmp_rating(file_path, rating)
-            
-            if xmp_updated:
-                print(f"成功更新图片评分: ID={image_id}, 评分={rating}")
-            else:
-                print(f"仅更新数据库评分，XMP更新失败: ID={image_id}")
-            
+            print(f"成功更新图片评分: ID={image_id}, 评分={rating}")
             return True
             
         except Exception as e:
@@ -413,12 +363,16 @@ class ImageManager(BaseDB):
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
+                
+                query = '''
                     SELECT id, filename, file_path, file_size, created_at, modified_at, 
                            exif_data, directory_path, width, height, 
                            format, is_favorite, rating, added_at
-                    FROM image_metadata WHERE is_favorite = 1 ORDER BY added_at DESC
-                ''')
+                    FROM image_metadata WHERE is_favorite = 1
+                    ORDER BY modified_at DESC
+                '''
+
+                cursor.execute(query)
                 
                 rows = cursor.fetchall()
                 images = []

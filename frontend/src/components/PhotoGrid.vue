@@ -1,8 +1,9 @@
 <template>
   <div class="content flex flex-col h-full">
     <!-- 工具栏 -->
-    <div class="toolbar p-3 border-b border-gray-200 bg-white">
-      <div class="flex items-center space-x-3">
+  <div class="toolbar p-3 border-b border-gray-200 bg-white">
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-2">
         <label class="text-sm font-medium text-gray-700">缩略图:</label>
         <select
           v-model="thumbnailSize"
@@ -13,7 +14,32 @@
           <option :value="200">大</option>
         </select>
       </div>
+      
+      <!-- 评分筛选 -->
+      <div class="flex items-center space-x-2">
+        <label class="text-sm font-medium text-gray-700">评分:</label>
+        <el-rate
+          v-model="ratingFilter"
+          :max="5"
+          :allow-half="false"
+          size="small"
+          :colors="['#ff6b6b', '#ffa726', '#66bb6a']"
+          :void-color="'#e4e7ed'"
+          :clearable="true"
+          @change="applyRatingFilter"
+        />
+        <el-button 
+          v-if="ratingFilter > 0"
+          type="text" 
+          size="small" 
+          @click="clearRatingFilter"
+          class="ml-1"
+        >
+          清除
+        </el-button>
+      </div>
     </div>
+  </div>
 
     <!-- 照片网格 -->
     <div class="flex-1 overflow-y-auto p-6 photo-grid-container" ref="photosContainer">
@@ -45,6 +71,8 @@
                 :class="{ 'text-red-500': image.is_favorite }"
               />
             </button>
+            
+
             
             <!-- 缩略图容器 -->
             <div class="thumbnail-container w-full h-full">
@@ -97,7 +125,13 @@
         
         <!-- 图片总数信息 -->
         <div v-if="!loading && images.length > 0" class="text-center py-2 text-sm text-gray-600">
-          显示 {{ Math.min(visibleImages.length, totalCount) }} / {{ totalCount }} 张图片
+          <template v-if="ratingFilter > 0">
+            显示 {{ visibleImages.length }} / {{ totalCount }} 张图片
+            <span class="text-blue-600">(评分≥{{ ratingFilter }}星)</span>
+          </template>
+          <template v-else>
+            显示 {{ Math.min(visibleImages.length, totalCount) }} / {{ totalCount }} 张图片
+          </template>
           <span v-if="totalCount === 0" class="text-gray-400">(暂无图片)</span>
           <div v-if="debugMode" class="text-xs text-gray-500 mt-1">
             当前模式: {{ 
@@ -105,7 +139,8 @@
               showAllPhotos ? '全部照片' : '目录: ' + directoryPath 
             }}<br>
             分页: offset={{ currentOffset }}, limit={{ pageSize }}<br>
-            已加载缩略图: {{ loadedThumbnails.size }}
+            已加载缩略图: {{ loadedThumbnails.size }}<br>
+            评分筛选: {{ ratingFilter > 0 ? ratingFilter + '星' : '无' }}
           </div>
         </div>
       </div>
@@ -148,18 +183,34 @@ const totalCount = ref(0)
 const hasMore = ref(true)
 const isLoadingMore = ref(false)
 const debugMode = ref(false)
+const ratingFilter = ref(0)
 
 // 缩略图懒加载状态
 const loadedThumbnails = ref(new Set())
 const photosContainer = ref(null)
 
 // 可见图片（用于虚拟滚动）
-const visibleImages = computed(() => images.value)
+const visibleImages = computed(() => {
+  if (ratingFilter.value > 0) {
+    return images.value.filter(image => image.rating >= ratingFilter.value)
+  }
+  return images.value
+})
 
 // 动态计算网格样式
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(auto-fill, minmax(${thumbnailSize.value}px, 1fr))`
 }))
+
+// 评分筛选相关方法
+const applyRatingFilter = () => {
+  loadImages(props.directoryPath)
+}
+
+const clearRatingFilter = () => {
+  ratingFilter.value = 0
+  applyRatingFilter()
+}
 
 // 缩略图加载/错误处理
 const onImageLoad = (id) => {
@@ -179,7 +230,7 @@ const loadVisibleThumbnails = () => {
     const rect = item.getBoundingClientRect()
     const containerRect = container.getBoundingClientRect()
     if (rect.top < containerRect.bottom + 200 && rect.bottom > containerRect.top - 200) {
-      const image = images.value[index]
+      const image = visibleImages.value[index] // 使用visibleImages而不是images.value
       if (image && !loadedThumbnails.value.has(image.id || image.path)) {
         loadedThumbnails.value.add(image.id || image.path)
       }
@@ -187,7 +238,7 @@ const loadVisibleThumbnails = () => {
   })
 }
 
-// 加载图片方法 - 支持分页
+// 加载图片方法 - 支持分页和评分筛选
 const loadImages = async (directoryPath, loadMore = false) => {
   if (!loadMore) {
     images.value = [];

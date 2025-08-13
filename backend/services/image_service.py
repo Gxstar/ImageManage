@@ -13,29 +13,20 @@ class ImageService:
         try:
             images = self.db_manager.get_all_images(limit=int(limit) if limit else None, offset=int(offset))
             total = self.db_manager.get_total_image_count()
+            
             return {"images": images, "total": total, "offset": int(offset)}
         except Exception as e:
             return {"error": str(e), "images": [], "total": 0, "offset": 0}
 
     def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0) -> Dict[str, Any]:
-        """获取指定目录中的图片 - 支持分页"""
+        """获取指定目录下的所有图片 - 支持分页"""
         try:
-            # 将相对路径转换为绝对路径
-            resolved_path = self._resolve_directory_path(directory_path)
+            images = self.db_manager.get_images_in_directory(directory_path, limit=limit, offset=offset)
+            total = self.db_manager.get_image_count_in_directory(directory_path)
             
-            if not resolved_path or not os.path.exists(resolved_path):
-                return {"error": "目录不存在", "images": [], "total": 0, "offset": 0}
-            
-            if limit is not None:
-                limit = int(limit)
-            if offset is not None:
-                offset = int(offset)
-            
-            images = self.db_manager.get_images_in_directory(resolved_path, limit=limit, offset=offset)
-            total_count = self.db_manager.get_image_count_in_directory(resolved_path)
-            return {"images": images, "total": total_count, "offset": offset}
+            return {"images": images, "total": total, "offset": int(offset)}
         except Exception as e:
-            return {"error": f"获取图片失败: {str(e)}", "images": [], "total": 0, "offset": 0}
+            return {"images": [], "total": 0, "error": str(e)}
     
     def _resolve_directory_path(self, directory_path: str) -> str:
         """将前端传递的相对路径转换为绝对路径"""

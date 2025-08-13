@@ -24,9 +24,17 @@ class FavoriteService:
             return {"success": False, "error": str(e)}
     
     def get_favorite_images(self) -> Dict[str, Any]:
-        """获取收藏的图片"""
+        """获取所有收藏的图片"""
         try:
             images = self.db_manager.get_favorite_images()
-            return {"images": images}
+            return {
+                "images": images,
+                "total": len(images) if images else 0,
+                "error": None
+            }
         except Exception as e:
-            return {"error": str(e), "images": []}
+            return {
+                "images": [],
+                "total": 0,
+                "error": str(e)
+            }

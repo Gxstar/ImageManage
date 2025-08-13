@@ -7,7 +7,6 @@ from typing import List, Tuple, Dict, Set
 import hashlib
 
 from PIL import Image
-import pyexiv2
 
 from db import DatabaseManager
 from image_utils import ImageProcessor
@@ -220,21 +219,11 @@ class BackgroundScanner:
             except Exception:
                 exif_data = None
             
-            # 获取XMP信息 - 添加错误处理
-            rating = 0
-            try:
-                xmp_data = pyexiv2.Image(file_path).read_xmp()
-                if xmp_data:
-                    rating_str = xmp_data.get('Xmp.dc.rating', xmp_data.get('Xmp.xmp.Rating', '0'))
-                    try:
-                        rating = int(rating_str)
-                    except (ValueError, TypeError):
-                        rating = 0
-            except Exception:
-                rating = 0
+            # 获取现有评分，如果图片已存在则保留原有评分
+            existing_image = self.db_manager.get_image_by_path(file_path)
+            rating = existing_image.get('rating', 0) if existing_image else 0
 
             # 生成缩略图 - 只在需要时生成
-            existing_image = self.db_manager.get_image_by_path(file_path)
             should_generate_thumbnail = (
                 not existing_image or 
                 abs(stat.st_mtime - existing_image.get('modified_at', 0)) > 1

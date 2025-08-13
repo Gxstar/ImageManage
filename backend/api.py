@@ -26,13 +26,18 @@ class Api:
         """移除目录"""
         return self.directory_service.remove_directory(directory_path)
     
-    def get_all_images(self, limit: int = None, offset: int = 0) -> Dict[str, Any]:
+    def get_all_images(self, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
         """获取所有图片 - 支持分页"""
         return self.image_service.get_all_images(limit, offset)
 
-    def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0) -> Dict[str, Any]:
+    def get_images_in_directory(self, directory_path: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
         """获取指定目录中的图片 - 支持分页"""
-        return self.image_service.get_images_in_directory(directory_path, limit, offset)
+        try:
+            limit = int(limit)
+            offset = int(offset)
+            return self.image_service.get_images_in_directory(directory_path, limit, offset)
+        except Exception as e:
+            return {"error": str(e), "images": [], "total": 0}
     
     def update_image_rating(self, image_id: int, rating: int) -> Dict[str, Any]:
         """更新图片评分"""
@@ -48,7 +53,10 @@ class Api:
     
     def get_favorite_images(self) -> Dict[str, Any]:
         """获取所有收藏的图片"""
-        return self.favorite_service.get_favorite_images()
+        try:
+            return self.favorite_service.get_favorite_images()
+        except Exception as e:
+            return {"error": str(e), "images": [], "total": 0}
     
     def delete_image(self, file_path: str) -> Dict[str, Any]:
         """从数据库中删除图片记录"""

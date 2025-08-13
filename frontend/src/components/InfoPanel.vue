@@ -11,11 +11,9 @@
         :src="API_URLS.image(imageDetails.id)"
         :preview-src-list="[API_URLS.image(imageDetails.id)]"
         fit="scale-down"
-
         class="w-full h-48 rounded-button cursor-pointer"
         loading="lazy"
         preview-teleport
-
         :alt="imageDetails.filename"
       />
     </div>
@@ -74,6 +72,9 @@
             :allow-half="false"
             size="small"
             class="mt-1"
+            :colors="['#ff6b6b', '#ffa726', '#66bb6a']"
+            :void-color="'#e4e7ed'"
+            :disabled-void-color="'#e4e7ed'"
             @change="updateRating"
           />
         </div>
