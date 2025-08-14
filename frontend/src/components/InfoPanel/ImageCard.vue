@@ -1,83 +1,140 @@
 <template>
-  <el-card class="w-full" shadow="hover">
+  <el-card class="w-full" shadow="never">
     <!-- 图片预览 -->
-    <div class="mb-4">
+    <div class="mb-3 relative group">
       <el-image
         v-if="image?.id"
         :src="API_URLS.image(image.id)"
         :preview-src-list="[API_URLS.image(image.id)]"
-        fit="scale-down"
-        class="w-full h-48 rounded-lg cursor-pointer"
+        fit="contain"
+        class="w-full h-40 rounded-lg cursor-pointer shadow-sm"
         loading="lazy"
         preview-teleport
         :alt="image.filename"
-      />
+      >
+        <template #placeholder>
+          <div class="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center">
+            <i class="el-icon-picture-outline text-gray-400 text-xl"></i>
+          </div>
+        </template>
+      </el-image>
     </div>
     
-    <!-- 图片信息 -->
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">文件名</h3>
-        <p class="text-sm font-medium">{{ image.filename }}</p>
+    <!-- 基本信息区域 -->
+    <div class="space-y-3">
+      <!-- 文件信息 -->
+      <div class="bg-gray-50 rounded-lg p-2.5">
+        <h3 class="text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+          <i class="el-icon-document mr-1.5"></i>
+          文件信息
+        </h3>
+        <div class="space-y-0.5 text-xs">
+          <div class="flex justify-between">
+            <span class="text-gray-600">文件名:</span>
+            <span class="font-medium text-gray-800 truncate ml-2">{{ image?.filename || '未知' }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">大小:</span>
+            <span class="font-medium text-gray-800">{{ formatFileSize(image?.file_size) }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">日期:</span>
+            <span class="font-medium text-gray-800">{{ formatDate(getExifData('DateTimeOriginal') || getExifData('DateTime') || getExifData('CreateDate') || image?.date_taken) }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">尺寸:</span>
+            <span class="font-medium text-gray-800">{{ image?.width || 0 }}×{{ image?.height || 0 }}</span>
+          </div>
+        </div>
       </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">文件大小</h3>
-        <p class="text-sm">{{ formatFileSize(image.file_size) }}</p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">拍摄日期</h3>
-        <p class="text-sm">{{ formatDate(getExifData('DateTimeOriginal') || getExifData('DateTime') || image.created_at) }}</p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">像素</h3>
-        <p class="text-sm">{{ formatDimensions(image.width, image.height) }}</p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">相机型号</h3>
-        <p class="text-sm">{{ getExifData('Model') || 'N/A' }}</p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">镜头型号</h3>
-        <p class="text-sm">{{ getExifData('LensModel') || 'N/A' }}</p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">焦距（等效）</h3>
-        <p class="text-sm">
-          {{ Math.round(parseFloat(getExifData('FocalLength')) || 0) || 'N/A' }}mm
-          <span v-if="getEquivalentFocalLength()" class="text-gray-400">
-            ({{ getEquivalentFocalLength() }}mm)
-          </span>
-        </p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">光圈</h3>
-        <p class="text-sm">f{{ getExifData('FNumber') || 'N/A' }}</p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">ISO</h3>
-        <p class="text-sm">{{ getExifData('ISOSpeedRatings') || getExifData('ISO') || 'N/A' }}</p>
-      </div>
-      <div>
-        <h3 class="text-xs font-medium text-gray-500">快门速度</h3>
-        <p class="text-sm">{{ formatShutterSpeed(getExifData('ExposureTime')) }}</p>
-      </div>
-      <div class="col-span-2">
-        <h3 class="text-xs font-medium text-gray-500">文件路径</h3>
-        <p class="text-sm">{{ image.file_path }}</p>
-      </div>
-      <div class="col-span-2">
-        <h3 class="text-xs font-medium text-gray-500">评分</h3>
-        <el-rate
-          v-model="localRating"
-          :max="5"
-          :allow-half="false"
-          size="small"
-          class="mt-1"
-          :colors="['#ff6b6b', '#ffa726', '#66bb6a']"
-          :void-color="'#e4e7ed'"
-          :disabled-void-color="'#e4e7ed'"
-          @change="handleRatingChange"
-        />
+
+      <!-- 拍摄参数 -->
+        <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2.5">
+          <h3 class="text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+            <i class="el-icon-camera mr-1.5"></i>
+            拍摄参数
+          </h3>
+          <div class="grid grid-cols-2 gap-1.5 text-xs">
+            <div>
+              <span class="text-gray-600">相机:</span>
+              <el-tooltip 
+                :content="(getExifData('Make') || '') + ' ' + (getExifData('Model') || '未知')" 
+                placement="top" 
+                :disabled="!((getExifData('Make') || '') + ' ' + (getExifData('Model') || '')).length || ((getExifData('Make') || '') + ' ' + (getExifData('Model') || '')).length <= 15"
+              >
+                <div class="font-medium text-gray-800 truncate">{{ getExifData('Make') || '未知' }} {{ getExifData('Model') || '' }}</div>
+              </el-tooltip>
+            </div>
+            <div>
+              <span class="text-gray-600">镜头:</span>
+              <el-tooltip 
+                :content="getExifData('LensModel') || '未知'" 
+                placement="top" 
+                :disabled="!(getExifData('LensModel') || '').length || (getExifData('LensModel') || '').length <= 15"
+              >
+                <div class="font-medium text-gray-800 truncate">{{ getExifData('LensModel') || '未知' }}</div>
+              </el-tooltip>
+            </div>
+            <div>
+              <span class="text-gray-600">焦距（等效）:</span>
+              <div class="font-medium text-gray-800">
+                {{ formatFocalLength(getExifData('FocalLength')) || '未知' }}
+                <span v-if="getEquivalentFocalLength()" class="text-gray-500 text-xs ml-1">
+                  ({{ getEquivalentFocalLength() }}mm)
+                </span>
+              </div>
+            </div>
+            <div>
+              <span class="text-gray-600">光圈:</span>
+              <div class="font-medium text-gray-800">{{ getExifData('FNumber') || '未知' }}</div>
+            </div>
+            <div>
+              <span class="text-gray-600">ISO:</span>
+              <div class="font-medium text-gray-800">{{ getExifData('ISO') || getExifData('ISOSpeedRatings') || getExifData('PhotographicSensitivity') || '未知' }}</div>
+            </div>
+            <div>
+              <span class="text-gray-600">快门:</span>
+              <div class="font-medium text-gray-800">{{ formatShutterSpeed(getExifData('ExposureTime')) || '未知' }}</div>
+            </div>
+          </div>
+        </div>
+
+      <!-- 文件位置 -->
+        <div class="bg-blue-50 rounded-lg p-2.5">
+          <h3 class="text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+            <i class="el-icon-folder mr-1.5"></i>
+            位置
+          </h3>
+          <div class="text-xs">
+            <el-tooltip 
+              :content="image?.file_path || '未知'" 
+              placement="top" 
+              :disabled="!(image?.file_path || '').length || (image?.file_path || '').length <= 30"
+            >
+              <div class="bg-white rounded px-1.5 py-1 border text-gray-700 font-mono text-xs break-all leading-tight truncate">
+                {{ image?.file_path || '未知' }}
+              </div>
+            </el-tooltip>
+          </div>
+        </div>
+
+      <!-- 评分 -->
+      <div class="bg-yellow-50 rounded-lg p-2.5">
+        <h3 class="text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+          <i class="el-icon-star-on mr-1.5"></i>
+          评分
+        </h3>
+        <div class="flex items-center justify-between">
+          <el-rate
+            v-model="localRating"
+            :max="5"
+            :colors="['#fbbf24', '#f59e0b', '#d97706']"
+            :disabled="!image?.id"
+            @change="handleRatingChange"
+            size="small"
+          />
+          <span class="text-xs font-medium text-gray-700 ml-2">{{ localRating || 0 }}</span>
+        </div>
       </div>
     </div>
   </el-card>
@@ -134,13 +191,25 @@ const formatDate = (dateString) => {
     const [year, month, day] = datePart.split(':')
     const [hour, minute, second] = timePart.split(':')
     const date = new Date(year, month - 1, day, hour, minute, second)
-    return date.toLocaleString()
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
   
   // 尝试解析标准日期格式
   const date = new Date(dateString)
   if (!isNaN(date.getTime())) {
-    return date.toLocaleString()
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
   
   // 如果无法解析，返回原始字符串
@@ -149,18 +218,37 @@ const formatDate = (dateString) => {
 
 // 格式化快门速度
 const formatShutterSpeed = (exposureTime) => {
-  if (!exposureTime) return 'N/A'
+  if (!exposureTime) return null
   
-  // 如果是字符串，先转换为数字
-  const time = typeof exposureTime === 'string' ? parseFloat(exposureTime) : exposureTime
+  try {
+    // 处理常见的EXIF格式
+    const time = parseFloat(exposureTime)
+    if (isNaN(time)) return exposureTime
+    
+    if (time >= 1) {
+      return `${time}s`
+    } else {
+      // 转换为分数形式，如1/125
+      const denominator = Math.round(1 / time)
+      return `1/${denominator}s`
+    }
+  } catch (error) {
+    return exposureTime
+  }
+}
+
+// 格式化焦距，确保只显示整数
+const formatFocalLength = (focalLength) => {
+  if (!focalLength) return null
   
-  if (time < 1) {
-    // 小于1秒时转换为分数形式
-    const denominator = Math.round(1 / time)
-    return `1/${denominator}`
-  } else {
-    // 大于等于1秒时显示为整数
-    return `${Math.round(time)}s`
+  try {
+    // 处理常见的EXIF格式，如"24.0 mm"或"24"
+    const value = parseFloat(focalLength)
+    if (isNaN(value)) return focalLength
+    
+    return Math.round(value) + 'mm'
+  } catch (error) {
+    return focalLength
   }
 }
 
