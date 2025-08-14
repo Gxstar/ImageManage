@@ -19,13 +19,13 @@
           <!-- 收藏按钮 -->
           <button 
             @click.stop="toggleFavorite(image)"
-            class="absolute top-2 right-2 z-10 p-1.5 bg-black bg-opacity-20 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-opacity-40"
+            class="absolute top-1 right-1 z-10 w-6 h-6 bg-black bg-opacity-20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-opacity-30"
             :class="{ 'opacity-100': image.is_favorite }"
           >
             <FontAwesomeIcon 
               :icon="image.is_favorite ? faHeartSolid : faHeartRegular" 
-              class="w-4 h-4"
-              :class="{ 'text-red-500': image.is_favorite }"
+              class="w-3 h-3"
+              :class="image.is_favorite ? 'text-red-500' : 'text-white'"
             />
           </button>
           
