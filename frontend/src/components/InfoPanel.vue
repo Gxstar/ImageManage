@@ -5,12 +5,9 @@
       <i class="fas fa-times"></i>
     </button>
     
-    <!-- 图片预览 -->
-    <ImagePreview :image="imageDetails" />
-    
     <div class="flex-1 overflow-y-auto">
-      <!-- 图片信息 -->
-      <ImageInfo 
+      <!-- 图片预览和信息卡片 -->
+      <ImageCard 
         :image="imageDetails" 
         @update-rating="handleRatingUpdate"
       />
@@ -30,8 +27,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import ImagePreview from './InfoPanel/ImagePreview.vue'
-import ImageInfo from './InfoPanel/ImageInfo.vue'
+import ImageCard from './InfoPanel/ImageCard.vue'
 import QuickActions from './InfoPanel/QuickActions.vue'
 import ImageTags from './InfoPanel/ImageTags.vue'
 

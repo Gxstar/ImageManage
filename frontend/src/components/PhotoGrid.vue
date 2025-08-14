@@ -21,6 +21,7 @@
       :totalCount="totalCount"
       :hasMore="hasMore"
       :isLoadingMore="isLoadingMore"
+      :debugMode="debugMode"
       @select-image="selectImage"
       @toggle-favorite="toggleFavorite"
       @load-more="loadMoreImages"

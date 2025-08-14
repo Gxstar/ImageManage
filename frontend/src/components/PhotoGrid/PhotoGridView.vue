@@ -153,6 +153,10 @@ const props = defineProps({
   isLoadingMore: {
     type: Boolean,
     default: false
+  },
+  debugMode: {
+    type: Boolean,
+    default: false
   }
 })
 
