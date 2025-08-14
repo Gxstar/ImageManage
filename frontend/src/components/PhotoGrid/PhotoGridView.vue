@@ -463,4 +463,15 @@ defineExpose({
 }
 
 /* 动态网格列数将在computed中处理 */
+/* 日期分割线样式优化 */
+:deep(.el-divider__text) {
+  background-color: #f9fafb !important; /* 与整体背景色一致 */
+  padding: 0 16px;
+  border-radius: 4px;
+}
+
+:deep(.el-divider__text.is-left) {
+  background-color: #f9fafb !important; /* 与整体背景色一致 */
+}
+
 </style>
