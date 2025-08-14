@@ -72,3 +72,12 @@ class Api:
     def get_photo_counts(self) -> Dict[str, Any]:
         """获取各类照片计数"""
         return self.image_service.get_photo_counts()
+    
+    def trigger_background_scan(self) -> Dict[str, Any]:
+        """手动触发后台扫描"""
+        try:
+            from background_scanner import background_scanner
+            total_processed = background_scanner.force_full_scan()
+            return {"success": True, "processed": total_processed}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

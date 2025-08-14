@@ -13,7 +13,7 @@
       class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left"
       :class="{ 'bg-primary/10': showFavorites }">
       <div class="icon-wrapper">
-        <font-awesome-icon icon="star" class="text-primary" />
+        <font-awesome-icon icon="heart" class="text-primary" />
       </div>
       <span>收藏夹</span>
       <span class="ml-auto text-xs text-gray-400">{{ photoCounts.favorites || 0 }}</span>

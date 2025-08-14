@@ -29,7 +29,9 @@ import {
   faShareAlt,
   faTrashAlt,
   faTags,
-  faImage
+  faImage,
+  faHeart,
+  faQuestionCircle
 } from '@fortawesome/free-solid-svg-icons'
 
 import App from './App.vue'
@@ -59,7 +61,9 @@ library.add(
   faShareAlt,
   faTrashAlt,
   faTags,
-  faImage
+  faImage,
+  faHeart,
+  faQuestionCircle
 )
 
 const app = createApp(App)

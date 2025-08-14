@@ -7,7 +7,7 @@
           v-model="localThumbnailSize"
           class="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="80">小</option>
+          <option :value="80" selected>小</option>
           <option :value="120">中</option>
           <option :value="160">大</option>
         </select>

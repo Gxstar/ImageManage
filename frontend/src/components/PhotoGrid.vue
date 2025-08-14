@@ -1,5 +1,14 @@
 <template>
   <div class="content flex flex-col h-full">
+    <!-- 信息栏 -->
+    <InfoBar 
+      :directoryPath="directoryPath"
+      :showAllPhotos="showAllPhotos"
+      :showFavorites="showFavorites"
+      :imageCount="totalCount"
+      @refresh="loadImages"
+    />
+    
     <!-- 工具栏 -->
     <PhotoToolbar 
       v-model:thumbnailSize="thumbnailSize"
@@ -33,6 +42,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import PhotoToolbar from './PhotoGrid/PhotoToolbar.vue'
 import PhotoGridView from './PhotoGrid/PhotoGridView.vue'
+import InfoBar from './PhotoGrid/InfoBar.vue'
 import { API_URLS } from '../config/api'
 
 const props = defineProps({
@@ -56,7 +66,7 @@ const emit = defineEmits(['select-image'])
 const images = ref([])
 const loading = ref(false)
 const error = ref(null)
-const thumbnailSize = ref(120)
+const thumbnailSize = ref(80)
 const ratingFilter = ref(0)
 const totalCount = ref(0)
 const currentOffset = ref(0)
@@ -168,6 +178,9 @@ const toggleFavorite = async (image) => {
         images.value.splice(index, 1)
         totalCount.value--
       }
+      
+      // 通知父组件更新照片计数
+      emit('image-count-changed')
     } else {
       console.error('更新收藏状态失败:', result.error)
     }

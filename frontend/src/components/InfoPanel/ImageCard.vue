@@ -39,11 +39,16 @@
           </div>
           <div class="flex justify-between">
             <span class="text-gray-600">日期:</span>
-            <span class="font-medium text-gray-800">{{ formatDate(getExifData('DateTimeOriginal') || getExifData('DateTime') || getExifData('CreateDate') || image?.date_taken) }}</span>
+            <span class="font-medium text-gray-800">{{ formatDate(getPhotoDate()) }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-600">尺寸:</span>
-            <span class="font-medium text-gray-800">{{ image?.width || 0 }}×{{ image?.height || 0 }}</span>
+            <span class="font-medium text-gray-800">
+              {{ image?.width || 0 }}×{{ image?.height || 0 }}
+              <span v-if="image?.width && image?.height" class="text-gray-500 ml-1">
+                ({{ formatPixelCount(image.width * image.height) }})
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -128,10 +133,13 @@
           <el-rate
             v-model="localRating"
             :max="5"
-            :colors="['#fbbf24', '#f59e0b', '#d97706']"
+            :colors="['#FF6B6B', '#FFD166', '#57CC99']"
             :disabled="!image?.id"
+            :texts="['算了吧', '有点拉', '还行吧', '挺不错', '绝绝子']"
+            show-text
             @change="handleRatingChange"
             size="small"
+            class="rating-stars"
           />
           <span class="text-xs font-medium text-gray-700 ml-2">{{ localRating || 0 }}</span>
         </div>
@@ -177,6 +185,31 @@ const getExifData = (field) => {
   if (props.image.exif_data && props.image.exif_data[field]) {
     return props.image.exif_data[field]
   }
+  return null
+}
+
+// 获取照片日期（优先EXIF拍摄日期，其次文件创建时间）
+const getPhotoDate = () => {
+  // 优先从EXIF数据获取拍摄日期
+  const dateFields = ['DateTimeOriginal', 'DateTime', 'DateTimeDigitized']
+  
+  for (const field of dateFields) {
+    const exifDate = getExifData(field)
+    if (exifDate) {
+      return exifDate
+    }
+  }
+  
+  // 如果没有EXIF日期，使用文件创建时间
+  if (props.image.created_at) {
+    return props.image.created_at
+  }
+  
+  // 最后使用文件修改时间
+  if (props.image.modified_at) {
+    return props.image.modified_at
+  }
+  
   return null
 }
 
@@ -252,6 +285,24 @@ const formatFocalLength = (focalLength) => {
   }
 }
 
+// 格式化像素数量
+const formatPixelCount = (totalPixels) => {
+  if (!totalPixels || totalPixels === 0) return '0像素'
+  
+  // 转换为百万像素
+  const megaPixels = totalPixels / 1000000
+  
+  if (megaPixels >= 1000) {
+    return Math.round(megaPixels) + 'MP'
+  } else if (megaPixels >= 100) {
+    return megaPixels.toFixed(0) + 'MP'
+  } else if (megaPixels >= 10) {
+    return megaPixels.toFixed(1) + 'MP'
+  } else {
+    return megaPixels.toFixed(2) + 'MP'
+  }
+}
+
 // 获取等效焦距
 const getEquivalentFocalLength = () => {
   // 直接使用EXIF中的等效焦距信息
@@ -299,3 +350,16 @@ const formatDimensions = (width, height) => {
   return 'N/A'
 }
 </script>
+
+<style scoped>
+/* 评分星星样式增强 */
+:deep(.rating-stars .el-rate__item .el-rate__icon) {
+  font-size: 16px;
+  margin-right: 2px;
+}
+
+:deep(.rating-stars .el-rate__item:hover .el-rate__icon) {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+</style>

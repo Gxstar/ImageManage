@@ -1,5 +1,5 @@
 <template>
-  <div class="home-container flex h-screen bg-gray-50">
+  <div class="home-container flex h-screen bg-gray-50  border-t border-solid">
     <!-- 侧边栏 -->
     <Sidebar 
       :selectedDirectory="selectedDirectory" 

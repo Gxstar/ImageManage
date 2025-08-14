@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 overflow-y-auto p-6 photo-grid-container" ref="photosContainer">
+  <div class="flex-1 overflow-y-auto px-6 py-2 photo-grid-container" ref="photosContainer">
     <div v-if="loading" class="text-center py-4">
       <p>正在加载图片...</p>
     </div>
@@ -7,56 +7,62 @@
       <p>{{ error }}</p>
     </div>
     <div v-else>
-      <div class="photo-grid grid gap-4" :style="gridStyle">
-        <!-- 虚拟滚动占位符 -->
-        <div 
-          v-for="image in visibleImages" 
-          :key="image.id || image.path" 
-          class="photo-thumbnail bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-blue-500 cursor-pointer relative group"
-          @click="selectImage(image)"
-          :style="{ minHeight: thumbnailSize + 'px' }"
-        >
-          <!-- 收藏按钮 -->
-          <button 
-            @click.stop="toggleFavorite(image)"
-            class="absolute top-1 right-1 z-10 w-6 h-6 bg-black bg-opacity-20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-opacity-30"
-            :class="{ 'opacity-100': image.is_favorite }"
+      <!-- 按月份分组显示 -->
+      <div v-for="group in groupedImages" :key="group.month" class="mb-8">
+        <el-divider content-position="left">
+          <span class="text-md font-semibold text-gray-700">{{ group.month }}</span>
+        </el-divider>
+        
+        <div class="photo-grid grid gap-4" :style="gridStyle">
+          <div 
+            v-for="image in group.images" 
+            :key="image.id || image.path" 
+            class="photo-thumbnail bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-blue-500 cursor-pointer relative group"
+            @click="selectImage(image)"
+            :style="{ minHeight: thumbnailSize + 'px' }"
           >
-            <FontAwesomeIcon 
-              :icon="image.is_favorite ? faHeartSolid : faHeartRegular" 
-              class="w-3 h-3"
-              :class="image.is_favorite ? 'text-red-500' : 'text-white'"
-            />
-          </button>
-          
-          <!-- 缩略图容器 -->
-          <div class="thumbnail-container w-full h-full">
-            <img 
-              v-if="image.id && loadedThumbnails.has(image.id)"
-              :src="API_URLS.thumbnail(image.id)"
-              class="w-full h-full object-cover" 
-              :alt="image.name || image.filename"
-              loading="lazy"
-              @load="onImageLoad(image.id)"
-              @error="onImageError(image.id)"
+            <!-- 收藏按钮 -->
+            <button 
+              @click.stop="toggleFavorite(image)"
+              class="absolute top-1 right-1 z-10 w-6 h-6 bg-black bg-opacity-20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-opacity-30"
+              :class="{ 'opacity-100': image.is_favorite }"
             >
-            <img 
-              v-else-if="loadedThumbnails.has(image.path)"
-              :src="API_URLS.imagePath(image.path)"
-              class="w-full h-full object-cover" 
-              :alt="image.name || image.filename"
-              loading="lazy"
-              @load="onImageLoad(image.path)"
-              @error="onImageError(image.path)"
-            >
-            <div 
-              v-else
-              class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400"
-            >
-              <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <FontAwesomeIcon 
+                :icon="image.is_favorite ? faHeartSolid : faHeartRegular" 
+                class="w-3 h-3"
+                :class="image.is_favorite ? 'text-red-500' : 'text-white'"
+              />
+            </button>
+            
+            <!-- 缩略图容器 -->
+            <div class="thumbnail-container w-full h-full">
+              <img 
+                v-if="image.id && loadedThumbnails.has(image.id)"
+                :src="API_URLS.thumbnail(image.id)"
+                class="w-full h-full object-cover" 
+                :alt="image.name || image.filename"
+                loading="lazy"
+                @load="onImageLoad(image.id)"
+                @error="onImageError(image.id)"
+              >
+              <img 
+                v-else-if="loadedThumbnails.has(image.path)"
+                :src="API_URLS.imagePath(image.path)"
+                class="w-full h-full object-cover" 
+                :alt="image.name || image.filename"
+                loading="lazy"
+                @load="onImageLoad(image.path)"
+                @error="onImageError(image.path)"
+              >
+              <div 
+                v-else
+                class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400"
+              >
+                <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -81,11 +87,11 @@
       <!-- 图片总数信息 -->
       <div v-if="!loading && images.length > 0" class="text-center py-2 text-sm text-gray-600">
         <template v-if="ratingFilter > 0">
-          显示 {{ visibleImages.length }} / {{ totalCount }} 张图片
+          显示 {{ groupedImages.reduce((total, group) => total + group.images.length, 0) }} / {{ totalCount }} 张图片
           <span class="text-blue-600">(评分≥{{ ratingFilter }}星)</span>
         </template>
         <template v-else>
-          显示 {{ Math.min(visibleImages.length, totalCount) }} / {{ totalCount }} 张图片
+          显示 {{ groupedImages.reduce((total, group) => total + group.images.length, 0) }} / {{ totalCount }} 张图片
         </template>
         <span v-if="totalCount === 0" class="text-gray-400">(暂无图片)</span>
         <div v-if="debugMode" class="text-xs text-gray-500 mt-1">
@@ -93,7 +99,7 @@
             showFavorites ? '收藏夹' : 
             showAllPhotos ? '全部照片' : '目录: ' + directoryPath 
           }}<br>
-          分页: offset={{ currentOffset }}, limit={{ pageSize }}<br>
+          分组数量: {{ groupedImages.length }}<br>
           已加载缩略图: {{ loadedThumbnails.size }}<br>
           评分筛选: {{ ratingFilter > 0 ? ratingFilter + '星' : '无' }}
         </div>
@@ -108,6 +114,7 @@ import { API_URLS } from '../../config/api'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons'
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons'
+import { ElDivider } from 'element-plus'
 
 const props = defineProps({
   directoryPath: {
@@ -170,7 +177,90 @@ const emit = defineEmits([
 const photosContainer = ref(null)
 const loadedThumbnails = ref(new Set())
 
-// 可见图片（用于虚拟滚动）
+// 获取照片日期（优先EXIF拍摄日期，其次文件创建日期）
+const getPhotoDate = (image) => {
+  // 优先从EXIF数据中提取拍摄日期
+  if (image.exif_data) {
+    const exif = image.exif_data;
+    // 尝试多个EXIF日期字段
+    const dateFields = ['DateTimeOriginal', 'DateTime', 'DateTimeDigitized'];
+    for (const field of dateFields) {
+      if (exif[field]) {
+        try {
+          // EXIF日期格式: "2023:10:15 14:30:25"
+          const dateStr = exif[field];
+          if (dateStr && dateStr.length >= 19) {
+            const year = parseInt(dateStr.substring(0, 4));
+            const month = parseInt(dateStr.substring(5, 7)) - 1; // 月份从0开始
+            const day = parseInt(dateStr.substring(8, 10));
+            const hour = parseInt(dateStr.substring(11, 13));
+            const minute = parseInt(dateStr.substring(14, 16));
+            const second = parseInt(dateStr.substring(17, 19));
+            
+            if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+              return new Date(year, month, day, hour, minute, second);
+            }
+          }
+        } catch (e) {
+          console.warn('解析EXIF日期失败:', e);
+        }
+      }
+    }
+  }
+  
+  // 其次使用文件创建日期
+  if (image.created_at) {
+    return new Date(image.created_at)
+  }
+  
+  // 最后使用文件修改日期
+  return new Date(image.modified_at || 0)
+}
+
+// 格式化月份显示
+const formatMonthYear = (date) => {
+  const year = date.getFullYear()
+  const month = date.getMonth() + 1
+  return `${year}年${month}月`
+}
+
+// 按月份分组的图片数据
+const groupedImages = computed(() => {
+  const filteredImages = props.ratingFilter > 0 
+    ? props.images.filter(image => image.rating >= props.ratingFilter)
+    : props.images
+
+  const groups = {}
+  
+  filteredImages.forEach(image => {
+    const date = getPhotoDate(image)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const monthLabel = formatMonthYear(date)
+    
+    if (!groups[monthKey]) {
+      groups[monthKey] = {
+        month: monthLabel,
+        images: []
+      }
+    }
+    groups[monthKey].images.push(image)
+  })
+  
+  // 按月份降序排序，并在每个分组内按时间降序排序
+  return Object.entries(groups)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([_, group]) => {
+      // 在每个分组内按时间降序排序
+      group.images.sort((a, b) => {
+        const dateA = getPhotoDate(a)
+        const dateB = getPhotoDate(b)
+        return dateB - dateA // 降序排序
+      })
+      return group
+    })
+})
+
+// 可见图片（用于虚拟滚动）- 已废弃，使用groupedImages
 const visibleImages = computed(() => {
   if (props.ratingFilter > 0) {
     return props.images.filter(image => image.rating >= props.ratingFilter)
