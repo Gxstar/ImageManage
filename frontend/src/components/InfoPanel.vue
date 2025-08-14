@@ -1,8 +1,8 @@
 <template>
   <div class="info-panel w-[320px] bg-white border-l border-gray-200 h-full flex flex-col relative overflow-y-auto">
     <!-- 关闭按钮 -->
-    <button @click="emit('close')" class="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors duration-200 z-10">
-      <i class="fas fa-times"></i>
+    <button @click="emit('close')" class="absolute top-3 right-3 flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 z-10 backdrop-blur-sm">
+      <font-awesome-icon icon="times" class="text-sm font-medium" />
     </button>
     
     <div class="flex-1 overflow-y-auto">
@@ -27,6 +27,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import ImageCard from './InfoPanel/ImageCard.vue'
 import QuickActions from './InfoPanel/QuickActions.vue'
 import ImageTags from './InfoPanel/ImageTags.vue'
