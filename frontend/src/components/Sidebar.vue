@@ -9,299 +9,52 @@
       </div>
     </div>
     <div class="flex-1 overflow-y-auto py-4">
-      <div class="px-4 space-y-1">
-            <button @click="showAllPhotos"
-              class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left"
-              :class="{ 'bg-primary/10': props.showAllPhotos }">
-              <div class="icon-wrapper">
-                <font-awesome-icon icon="images" class="text-primary" />
-              </div>
-              <span>全部照片</span>
-              <span class="ml-auto text-xs text-gray-400">{{ photoCounts.allPhotos || 0 }}</span>
-            </button>
-            <button @click="showFavorites"
-              class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left"
-              :class="{ 'bg-primary/10': props.showFavorites }">
-              <div class="icon-wrapper">
-                <font-awesome-icon icon="star" class="text-primary" />
-              </div>
-              <span>收藏夹</span>
-              <span class="ml-auto text-xs text-gray-400">{{ photoCounts.favorites || 0 }}</span>
-            </button>
-          </div>
+      <!-- 导航部分 -->
+      <NavigationSection 
+        :showAllPhotos="props.showAllPhotos"
+        :showFavorites="props.showFavorites"
+        :photoCounts="photoCounts"
+        @showAllPhotos="showAllPhotos"
+        @showFavorites="showFavorites" />
+
       <div class="px-4 mt-6">
         <!-- 本地目录 -->
-        <div class="mb-6">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-gray-700">本地目录</h2>
-            <div class="flex items-center space-x-2">
-              <button @click="loadDirectories" class="text-primary hover:text-gray-700" title="刷新目录">
-                <font-awesome-icon icon="sync-alt" class="w-4 h-4" />
-              </button>
-              <button @click="addLocalDirectory" class="text-primary hover:text-gray-700">
-                <font-awesome-icon icon="plus" class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+        <LocalDirectorySection 
+          :directories="directories"
+          :selectedDirectory="props.selectedDirectory"
+          :photoCounts="photoCounts"
+          @loadDirectories="loadDirectories"
+          @addLocalDirectory="addLocalDirectory"
+          @selectDirectory="selectDirectory"
+          @showDirectoryContextMenu="showDirectoryContextMenu"
+          @removeDirectory="removeDirectory" />
 
-          <!-- 显示目录列表 -->
-          <div v-if="Object.keys(directories).length > 0">
-            <div v-for="(dir, dirPath) in directories" :key="dirPath">
-              <div @contextmenu.prevent="showDirectoryContextMenu($event, dir.path)" :class="[
-                'w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors group cursor-pointer',
-                { 'bg-primary/10': props.selectedDirectory === dir.path }
-              ]">
-                <div class="flex items-center flex-grow" @click="selectDirectory(dir.path)">
-                  <button @click.stop="toggleDirectoryExpansion(dir)"
-                    class="mr-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600">
-                    <font-awesome-icon icon="chevron-down" class="w-4 h-4 transition-transform"
-                      :class="{ 'transform rotate-180': dir.expanded }" />
-                  </button>
-                  <font-awesome-icon icon="folder" class="w-4 h-4 mr-2 text-primary" />
-                  <span class="text-sm">{{ dir.name }}</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <span class="text-xs text-gray-400">{{ photoCounts.directories[dir.path] || 0 }}</span>
-                  <button @click.stop="removeDirectory(dir.path)"
-                    class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600">
-                    <font-awesome-icon icon="times" class="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- 展开的子目录 (递归显示) -->
-              <div v-show="dir.expanded">
-                <div class="ml-4 border-l-2 border-gray-200 pl-2">
-                  <RecursiveSubDirectory :directories="dir.subdirectories" :selectedDirectory="props.selectedDirectory"
-                    :photoCounts="props.photoCounts"
-                    @select-directory="selectDirectory" @show-context-menu="showDirectoryContextMenu" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 如果没有目录，显示提示信息 -->
-          <div v-else class="text-center py-4 text-primary text-sm">
-            <p>暂无目录</p>
-            <p class="mt-1">点击上方 + 按钮添加目录</p>
-          </div>
-        </div>
-        <div class="space-y-1">
-          <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-            <div class="icon-wrapper">
-              <font-awesome-icon icon="mountain" class="text-primary" />
-            </div>
-            <span>旅行记忆</span>
-            <span class="ml-auto text-xs text-gray-400">{{ photoCounts.travel || 0 }}</span>
-          </button>
-          <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-            <div class="icon-wrapper">
-              <font-awesome-icon icon="utensils" class="text-primary" />
-            </div>
-            <span>美食日记</span>
-            <span class="ml-auto text-xs text-gray-400">{{ photoCounts.food || 0 }}</span>
-          </button>
-          <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-            <div class="icon-wrapper">
-              <font-awesome-icon icon="birthday-cake" class="text-primary" />
-            </div>
-            <span>生日派对</span>
-            <span class="ml-auto text-xs text-gray-400">{{ photoCounts.birthday || 0 }}</span>
-          </button>
-        </div>
+        <!-- 相册部分 -->
+        <AlbumSection :photoCounts="photoCounts" />
       </div>
+
+      <!-- 智能分类部分 -->
       <div class="px-4 mt-6">
         <div class="flex items-center justify-between mb-2">
           <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">智能分类</h3>
         </div>
-        <div class="space-y-1">
-          <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-            <div class="icon-wrapper">
-              <font-awesome-icon icon="user" class="text-primary" />
-            </div>
-            <span>人物</span>
-          </button>
-          <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-            <div class="icon-wrapper">
-              <font-awesome-icon icon="map-marker-alt" class="text-primary" />
-            </div>
-            <span>地点</span>
-          </button>
-          <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-            <div class="icon-wrapper">
-              <font-awesome-icon icon="calendar-alt" class="text-primary" />
-            </div>
-            <span>时间线</span>
-          </button>
-        </div>
+        <SmartCategorySection />
       </div>
     </div>
     <div class="p-4 border-t border-gray-200">
-      <button class="w-full flex items-center space-x-3 px-3 py-2 rounded-button hover:bg-gray-100 text-left">
-        <div class="icon-wrapper">
-          <font-awesome-icon icon="cog" class="text-gray-500" />
-        </div>
-        <span>设置</span>
-      </button>
+      <SettingsSection />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, defineComponent, h } from 'vue'
+import { ref, onMounted } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-
-// 定义递归组件
-const RecursiveSubDirectory = defineComponent({
-  name: 'RecursiveSubDirectory',
-  props: {
-    directories: {
-      type: Array,
-      default: () => []
-    },
-    selectedDirectory: {
-      type: String,
-      default: ''
-    },
-    photoCounts: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  emits: ['select-directory', 'show-context-menu', 'remove-directory'],
-  components: {
-    'font-awesome-icon': FontAwesomeIcon
-  },
-  setup(props, { emit }) {
-    const toggleDirectoryExpansion = async (dir) => {
-      if (dir.has_subdirs && (!dir.subdirectories || dir.subdirectories.length === 0)) {
-        // 懒加载子目录
-        try {
-          const result = await window.pywebview.api.get_directory_tree(dir.path, 1);
-          if (result && result.tree && result.tree[0]) {
-            dir.subdirectories = result.tree[0].children || [];
-          }
-        } catch (error) {
-          console.error('加载子目录失败:', error);
-        }
-      }
-      dir.expanded = !dir.expanded;
-    };
-
-    const removeDirectory = (path) => {
-      emit('remove-directory', path);
-    };
-
-    return {
-      toggleDirectoryExpansion,
-      selectDirectory: (path) => emit('select-directory', path),
-      showContextMenu: (event, path) => emit('show-context-menu', { event, path, type: 'directory' }),
-      removeDirectory
-    };
-  },
-  render() {
-    if (!this.directories || this.directories.length === 0) {
-      return null;
-    }
-
-    return h('div', { class: 'recursive-subdirectory' }, [
-      this.directories.map(node => [
-        node.type === 'directory' ? 
-          h('div', {
-              key: node.path,
-              onClick: () => this.selectDirectory(node.path),
-              onContextmenu: (event) => this.showContextMenu(event, node.path),
-              class: [
-                'w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors group cursor-pointer',
-                { 'bg-primary/10': this.selectedDirectory === node.path }
-              ]
-            }, [
-              h('div', {
-                class: 'flex items-center flex-grow',
-                onClick: () => this.selectDirectory(node.path)
-              }, [
-                h('button', {
-                  onClick: (event) => {
-                    event.stopPropagation();
-                    this.toggleDirectoryExpansion(node);
-                  },
-                  class: [
-                    'mr-2 text-gray-400 hover:text-gray-600',
-                    { 'opacity-0 group-hover:opacity-100': !node.has_subdirs, 'opacity-100': node.has_subdirs }
-                  ]
-                }, [
-                  h(FontAwesomeIcon, {
-                  icon: 'chevron-down',
-                  class: [
-                    'w-4 h-4 transition-transform',
-                    { 'transform rotate-180': node.expanded }
-                  ]
-                })
-                ]),
-                h(FontAwesomeIcon, { icon: 'folder', class: 'w-4 h-4 mr-2 text-primary' }),
-                h('span', { class: 'text-sm' }, node.name)
-              ]),
-              h('div', {
-                class: 'flex items-center space-x-2'
-              }, [
-                h('span', { class: 'text-xs text-gray-400' }, node.image_count || 0),
-                h('button', {
-                  onClick: (event) => {
-                    event.stopPropagation();
-                    this.$emit('remove-directory', node.path);
-                  },
-                  class: 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600'
-                }, [
-                  h('svg', {
-                    xmlns: 'http://www.w3.org/2000/svg',
-                    class: 'h-4 w-4',
-                    fill: 'none',
-                    viewBox: '0 0 24 24',
-                    stroke: 'currentColor'
-                  }, [
-                    h('path', {
-                      'stroke-linecap': 'round',
-                      'stroke-linejoin': 'round',
-                      'stroke-width': 2,
-                      d: 'M6 18L18 6M6 6l12 12'
-                    })
-                  ])
-                ])
-              ])
-            ]) :
-          node.type === 'image' ?
-            h('div', {
-              key: node.path,
-              onClick: () => this.selectDirectory(node.path),
-              class: [
-                'w-full flex items-center p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer',
-                { 'bg-primary/10': this.selectedDirectory === node.path }
-              ]
-            }, [
-              h(FontAwesomeIcon, { icon: 'image', class: 'w-4 h-4 mr-2 text-gray-500' }),
-              h('span', { class: 'text-sm text-gray-700 flex-1' }, node.name),
-              h('span', { class: 'text-xs text-gray-400 ml-2' }, node.image_count || 0)
-            ]) :
-            null,
-        node.type === 'directory' && node.expanded && node.has_subdirs ?
-          h('div', {
-            key: 'sub-' + node.path,
-            class: 'ml-4 border-l-2 border-gray-200 pl-2'
-          }, [
-            h(RecursiveSubDirectory, {
-              directories: node.subdirectories || [],
-              selectedDirectory: this.selectedDirectory,
-              photoCounts: this.photoCounts,
-              'onSelect-directory': this.selectDirectory,
-              'onShow-context-menu': this.showContextMenu,
-              'onRemove-directory': (path) => this.removeDirectory(path)
-            })
-          ]) :
-          null
-      ])
-    ]);
-  }
-});
+import NavigationSection from './Sidebar/NavigationSection.vue'
+import LocalDirectorySection from './Sidebar/LocalDirectorySection.vue'
+import AlbumSection from './Sidebar/AlbumSection.vue'
+import SmartCategorySection from './Sidebar/SmartCategorySection.vue'
+import SettingsSection from './Sidebar/SettingsSection.vue'
 
 // Props 定义
 const props = defineProps({
@@ -348,27 +101,7 @@ const showDirectoryContextMenu = (event, path) => {
   emit('showContextMenu', { event, path, type: 'directory' });
 };
 
-// 切换目录展开状态
-const toggleDirectoryExpansion = async (dir) => {
-  if (dir.has_subdirs && (!dir.subdirectories || dir.subdirectories.length === 0)) {
-    // 懒加载子目录
-    try {
-      await waitForPyWebView();
-      console.log('懒加载子目录:', dir.path);
-      const result = await window.pywebview.api.get_directory_tree(dir.path, 1);
-      console.log('子目录加载结果:', result);
-      if (result && result.tree && result.tree[0]) {
-        dir.subdirectories = result.tree[0].children || [];
-        console.log('加载的子目录:', dir.subdirectories);
-      }
-    } catch (error) {
-      console.error('加载子目录失败:', error);
-    }
-  }
-  if (dir) {
-    dir.expanded = !dir.expanded;
-  }
-};
+
 
 // 转换新的目录树结构数据格式
 const convertDirectoryStructure = (treeNode) => {
