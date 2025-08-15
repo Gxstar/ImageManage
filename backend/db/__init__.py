@@ -1,13 +1,15 @@
 from .base import BaseDB
 from .directory_manager import DirectoryManager
 from .image_manager import ImageManager
+from .album_manager import AlbumManager
 
 class DatabaseManager:
-    """向后兼容的数据库管理器，组合了目录和图片管理功能"""
+    """向后兼容的数据库管理器，组合了目录、图片和相册管理功能"""
     
     def __init__(self, db_path: str = "directories.db"):
         self.directory_manager = DirectoryManager(db_path)
         self.image_manager = ImageManager(db_path)
+        self.album_manager = AlbumManager(db_path)
     
     # 目录相关方法（代理到directory_manager）
     def save_directory(self, dir_path: str, dir_name: str) -> bool:

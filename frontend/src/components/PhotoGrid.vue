@@ -242,7 +242,7 @@ defineExpose({
 
 <style scoped>
 .content {
-  width: calc(100% - 280px);
+  width: 100%;
 }
 
 .photo-grid {

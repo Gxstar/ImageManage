@@ -120,136 +120,44 @@ class ImageManager(BaseDB):
     
     def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0,
                                sort_by: str = "modified_at", sort_order: str = "desc") -> List[Dict[str, Any]]:
-        """获取指定目录下的所有图片（不包括子目录） - 支持分页和排序"""
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                
-                # 构建排序SQL
-                order_by = f"{sort_by} {sort_order.upper()}"
-                
-                query = f'''
-                    SELECT m.id, m.filename, m.file_path, m.file_size, m.created_at, m.modified_at,
-                           m.exif_data, m.directory_path, m.width, m.height,
-                           m.format, m.is_favorite, m.rating, m.added_at
-                    FROM image_metadata m
-                    WHERE m.directory_path = ?
-                    ORDER BY m.{order_by}
-                '''
-
-                params = [directory_path]
-                if limit is not None and limit > 0:
-                    query += " LIMIT ? OFFSET ?"
-                    params.extend([limit, offset])
-
-                cursor.execute(query, params)
-
-                rows = cursor.fetchall()
-                images = []
-                for row in rows:
-                    images.append({
-                        "id": row[0],
-                        "filename": row[1], "file_path": row[2], "file_size": row[3],
-                        "created_at": row[4], "modified_at": row[5], "thumbnail_url": f"/api/thumbnail/{row[0]}",
-                        "exif_data": json.loads(row[6]) if row[6] else {},
-                        "directory_path": row[7], "width": row[8], "height": row[9],
-                        "format": row[10], "is_favorite": bool(row[11]),
-                        "rating": row[12], "added_at": row[13]
-                    })
-                return images
-        except sqlite3.Error as e:
-            raise DatabaseException(
-                operation="get_images_in_directory",
-                message=f"获取目录图片失败: {str(e)}",
-                details={"directory_path": directory_path, "limit": limit, "offset": offset}
-            )
-        except json.JSONDecodeError as e:
-            raise ImageProcessingException(
-                operation="parse_exif",
-                message=f"EXIF数据解析失败: {str(e)}",
-                details={"directory_path": directory_path}
-            )
+        """获取指定目录下的所有图片（不包括子目录） - 支持分页和排序
+        
+        注意：此方法已重构为使用query_images通用查询函数
+        """
+        return self.query_images(
+            directory_path=directory_path,
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
 
     def get_image_count_in_directory(self, directory_path: str) -> int:
-        """获取指定目录下的图片总数（不包括子目录）"""
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT COUNT(*) FROM image_metadata WHERE directory_path = ?
-                ''', (directory_path,))
-                result = cursor.fetchone()
-                return result[0] if result else 0
-        except sqlite3.Error as e:
-            raise DatabaseException(
-                operation="get_image_count_in_directory",
-                message=f"获取目录图片数量失败: {str(e)}",
-                details={"directory_path": directory_path}
-            )
+        """获取指定目录下的图片总数（不包括子目录）
+        
+        注意：此方法已重构为使用count_images通用计数函数
+        """
+        return self.count_images(directory_path=directory_path)
     
     def get_all_images(self, limit: int = None, offset: int = 0,
                       sort_by: str = "modified_at", sort_order: str = "desc") -> List[Dict[str, Any]]:
-        """获取所有图片 - 支持分页和排序"""
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                
-                # 构建排序SQL
-                order_by = f"{sort_by} {sort_order.upper()}"
-                
-                query = f'''
-                    SELECT m.id, m.filename, m.file_path, m.file_size, m.created_at, m.modified_at,
-                           m.exif_data, m.directory_path, m.width, m.height,
-                           m.format, m.is_favorite, m.rating, m.added_at
-                    FROM image_metadata m
-                    ORDER BY m.{order_by}
-                '''
-
-                params = []
-                if limit is not None and limit > 0:
-                    query += " LIMIT ? OFFSET ?"
-                    params.extend([limit, offset])
-
-                cursor.execute(query, params)
-                
-                images = []
-                for row in cursor.fetchall():
-                    images.append({
-                        "id": row[0],
-                        "filename": row[1], "file_path": row[2], "file_size": row[3],
-                        "created_at": row[4], "modified_at": row[5], "thumbnail_url": f"/api/thumbnail/{row[0]}",
-                        "exif_data": json.loads(row[6]) if row[6] else {},
-                        "directory_path": row[7], "width": row[8], "height": row[9],
-                        "format": row[10], "is_favorite": bool(row[11]),
-                        "rating": row[12], "added_at": row[13]
-                    })
-                
-                return images
-        except sqlite3.Error as e:
-            raise DatabaseException(
-                operation="get_all_images",
-                message=f"获取所有图片失败: {str(e)}",
-                details={"limit": limit, "offset": offset, "sort_by": sort_by, "sort_order": sort_order}
-            )
-        except json.JSONDecodeError as e:
-            raise ImageProcessingException(
-                operation="parse_exif",
-                message=f"EXIF数据解析失败: {str(e)}"
-            )
+        """获取所有图片 - 支持分页和排序
+        
+        注意：此方法已重构为使用query_images通用查询函数
+        """
+        return self.query_images(
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
 
     def get_total_image_count(self) -> int:
-        """获取所有图片的总数"""
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT COUNT(*) FROM image_metadata')
-                result = cursor.fetchone()
-                return result[0] if result else 0
-        except sqlite3.Error as e:
-            raise DatabaseException(
-                operation="get_total_image_count",
-                message=f"获取图片总数失败: {str(e)}"
-            )
+        """获取所有图片的总数
+        
+        注意：此方法已重构为使用count_images通用计数函数
+        """
+        return self.count_images()
     
     def delete_image(self, file_path: str) -> bool:
         """从数据库中删除图片"""
@@ -421,53 +329,245 @@ class ImageManager(BaseDB):
             )
     
     def get_favorite_images(self) -> List[Dict[str, Any]]:
-        """获取收藏的图片"""
+        """获取收藏的图片
+        
+        注意：此方法已重构为使用query_images通用查询函数
+        """
+        return self.query_images(
+            is_favorite=True,
+            sort_by="modified_at",
+            sort_order="desc"
+        )
+
+    def query_images(self, 
+                    directory_path: str = None,
+                    is_favorite: bool = None,
+                    album_id: int = None,
+                    limit: int = None,
+                    offset: int = 0,
+                    sort_by: str = "modified_at",
+                    sort_order: str = "desc",
+                    min_rating: int = None,
+                    max_rating: int = None,
+                    format_filter: str = None) -> List[Dict[str, Any]]:
+        """通用图片查询函数 - 支持多种筛选条件
+        
+        Args:
+            directory_path: 指定目录路径，为None时不限制
+            is_favorite: 收藏状态筛选，为None时不限制
+            album_id: 相册ID筛选，为None时不限制
+            limit: 返回数量限制，为None时不限制
+            offset: 偏移量，默认为0
+            sort_by: 排序字段，默认为modified_at
+            sort_order: 排序顺序，默认为desc
+            min_rating: 最小评分筛选，为None时不限制
+            max_rating: 最大评分筛选，为None时不限制
+            format_filter: 图片格式筛选，为None时不限制
+            
+        Returns:
+            符合条件的图片列表
+        """
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 
-                query = '''
-                    SELECT id, filename, file_path, file_size, created_at, modified_at, 
-                           exif_data, directory_path, width, height, 
-                           format, is_favorite, rating, added_at
-                    FROM image_metadata WHERE is_favorite = 1
-                    ORDER BY modified_at DESC
-                '''
-
-                cursor.execute(query)
+                # 基础查询
+                if album_id is not None:
+                    query = '''
+                        SELECT m.id, m.filename, m.file_path, m.file_size, m.created_at, m.modified_at,
+                               m.exif_data, m.directory_path, m.width, m.height,
+                               m.format, m.is_favorite, m.rating, m.added_at,
+                               ai.added_at as album_added_at, ai.sort_order
+                        FROM image_metadata m
+                        JOIN album_images ai ON m.id = ai.image_id
+                    '''
+                else:
+                    query = '''
+                        SELECT m.id, m.filename, m.file_path, m.file_size, m.created_at, m.modified_at,
+                               m.exif_data, m.directory_path, m.width, m.height,
+                               m.format, m.is_favorite, m.rating, m.added_at,
+                               NULL as album_added_at, NULL as sort_order
+                        FROM image_metadata m
+                    '''
                 
-                rows = cursor.fetchall()
+                # 构建WHERE条件
+                conditions = []
+                params = []
+                
+                if album_id is not None:
+                    conditions.append("ai.album_id = ?")
+                    params.append(album_id)
+                
+                if directory_path is not None:
+                    conditions.append("m.directory_path = ?")
+                    params.append(directory_path)
+                
+                if is_favorite is not None:
+                    conditions.append("m.is_favorite = ?")
+                    params.append(int(is_favorite))
+                
+                if min_rating is not None:
+                    conditions.append("m.rating >= ?")
+                    params.append(min_rating)
+                
+                if max_rating is not None:
+                    conditions.append("m.rating <= ?")
+                    params.append(max_rating)
+                
+                if format_filter is not None:
+                    conditions.append("m.format = ?")
+                    params.append(format_filter)
+                
+                if conditions:
+                    query += " WHERE " + " AND ".join(conditions)
+                
+                # 添加排序
+                if album_id is not None and sort_by in ["sort_order", "album_added_at"]:
+                    # 当查询相册图片时，支持相册特定的排序字段
+                    if sort_by == "sort_order":
+                        order_field = "ai.sort_order"
+                    elif sort_by == "album_added_at":
+                        order_field = "ai.added_at"
+                    else:
+                        order_field = f"m.{sort_by}"
+                else:
+                    # 默认使用image_metadata表的字段排序
+                    order_field = f"m.{sort_by}"
+                
+                query += f" ORDER BY {order_field} {sort_order.upper()}"
+                
+                # 添加分页
+                if limit is not None and limit > 0:
+                    query += " LIMIT ? OFFSET ?"
+                    params.extend([limit, offset])
+                
+                cursor.execute(query, params)
+                
                 images = []
-                for row in rows:
-                    image_id = row[0]
-                    
-                    # 获取缩略图
-                    cursor.execute('''
-                        SELECT thumbnail FROM image_thumbnails
-                        WHERE image_id = ?
-                    ''', (image_id,))
-                    thumbnail_row = cursor.fetchone()
-                    thumbnail = thumbnail_row[0] if thumbnail_row else None
-                    
-                    images.append({
-                        "id": image_id,
-                        "filename": row[1], "file_path": row[2], "file_size": row[3],
-                        "created_at": row[4], "modified_at": row[5], "thumbnail_url": f"/api/thumbnail/{image_id}",
+                for row in cursor.fetchall():
+                    image_data = {
+                        "id": row[0],
+                        "filename": row[1], 
+                        "file_path": row[2], 
+                        "file_size": row[3],
+                        "created_at": row[4], 
+                        "modified_at": row[5], 
+                        "thumbnail_url": f"/api/thumbnail/{row[0]}",
                         "exif_data": json.loads(row[6]) if row[6] else {},
-                        "directory_path": row[7], "width": row[8], "height": row[9],
-                        "format": row[10], "is_favorite": bool(row[11]),
-                        "rating": row[12], "added_at": row[13]
-                    })
+                        "directory_path": row[7], 
+                        "width": row[8], 
+                        "height": row[9],
+                        "format": row[10], 
+                        "is_favorite": bool(row[11]),
+                        "rating": row[12], 
+                        "added_at": row[13]
+                    }
+                    
+                    # 如果查询的是相册图片，添加相册相关信息
+                    if album_id is not None:
+                        image_data.update({
+                            "album_added_at": row[14],
+                            "sort_order": row[15]
+                        })
+                    
+                    images.append(image_data)
+                
                 return images
+                
         except sqlite3.Error as e:
+            details = {
+                "directory_path": directory_path,
+                "is_favorite": is_favorite,
+                "limit": limit,
+                "offset": offset,
+                "sort_by": sort_by,
+                "sort_order": sort_order
+            }
+            if album_id is not None:
+                details["album_id"] = album_id
             raise DatabaseException(
-                operation="get_favorite_images",
-                message=f"获取收藏图片失败: {str(e)}"
+                operation="query_images",
+                message=f"查询图片失败: {str(e)}",
+                details=details
             )
         except json.JSONDecodeError as e:
             raise ImageProcessingException(
                 operation="parse_exif",
                 message=f"EXIF数据解析失败: {str(e)}"
+            )
+
+    def count_images(self, 
+                    directory_path: str = None,
+                    is_favorite: bool = None,
+                    album_id: int = None,
+                    min_rating: int = None,
+                    max_rating: int = None,
+                    format_filter: str = None) -> int:
+        """通用图片计数函数 - 支持多种筛选条件
+        
+        Args:
+            directory_path: 指定目录路径，为None时不限制
+            is_favorite: 收藏状态筛选，为None时不限制
+            album_id: 相册ID筛选，为None时不限制（预留参数，当前版本未实现）
+            min_rating: 最小评分筛选，为None时不限制
+            max_rating: 最大评分筛选，为None时不限制
+            format_filter: 图片格式筛选，为None时不限制
+            
+        Returns:
+            符合条件的图片数量
+        """
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 基础查询
+                query = '''
+                    SELECT COUNT(*) 
+                    FROM image_metadata m
+                '''
+                
+                # 构建WHERE条件
+                conditions = []
+                params = []
+                
+                if directory_path is not None:
+                    conditions.append("m.directory_path = ?")
+                    params.append(directory_path)
+                
+                if is_favorite is not None:
+                    conditions.append("m.is_favorite = ?")
+                    params.append(int(is_favorite))
+                
+                if min_rating is not None:
+                    conditions.append("m.rating >= ?")
+                    params.append(min_rating)
+                
+                if max_rating is not None:
+                    conditions.append("m.rating <= ?")
+                    params.append(max_rating)
+                
+                if format_filter is not None:
+                    conditions.append("m.format = ?")
+                    params.append(format_filter)
+                
+                if conditions:
+                    query += " WHERE " + " AND ".join(conditions)
+                
+                cursor.execute(query, params)
+                result = cursor.fetchone()
+                return result[0] if result else 0
+                
+        except sqlite3.Error as e:
+            details = {
+                "directory_path": directory_path,
+                "is_favorite": is_favorite
+            }
+            if album_id is not None:
+                details["album_id"] = album_id
+            raise DatabaseException(
+                operation="count_images",
+                message=f"统计图片数量失败: {str(e)}",
+                details=details
             )
 
     def get_image_by_id(self, image_id: int) -> Optional[Dict[str, Any]]:
