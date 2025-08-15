@@ -200,8 +200,8 @@ onMounted(async () => {
 
 <style scoped>
 .sidebar {
-  min-width: 280px;
-  max-width: 400px;
+  min-width: 200px;
+  max-width: 250px;
 }
 
 .icon-wrapper {
