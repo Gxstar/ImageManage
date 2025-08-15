@@ -57,6 +57,14 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  selectedAlbum: {
+    type: [Number, String],
+    default: null
+  },
+  albumName: {
+    type: String,
+    default: ''
+  },
   imageCount: {
     type: Number,
     default: 0
@@ -69,7 +77,9 @@ const isScanning = ref(false)
 
 // 计算当前位置显示文本
 const currentLocation = computed(() => {
-  if (props.showFavorites) {
+  if (props.selectedAlbum && props.albumName) {
+    return props.albumName
+  } else if (props.showFavorites) {
     return '收藏夹'
   } else if (props.showAllPhotos) {
     return '全部照片'
@@ -84,7 +94,9 @@ const currentLocation = computed(() => {
 
 // 计算当前位置的图标
 const locationIcon = computed(() => {
-  if (props.showFavorites) {
+  if (props.selectedAlbum) {
+    return 'photo-video'
+  } else if (props.showFavorites) {
     return 'heart'
   } else if (props.showAllPhotos) {
     return 'images'

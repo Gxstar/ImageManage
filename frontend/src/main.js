@@ -31,7 +31,8 @@ import {
   faTags,
   faImage,
   faHeart,
-  faQuestionCircle
+  faQuestionCircle,
+  faPhotoVideo
 } from '@fortawesome/free-solid-svg-icons'
 
 import App from './App.vue'
@@ -63,7 +64,8 @@ library.add(
   faTags,
   faImage,
   faHeart,
-  faQuestionCircle
+  faQuestionCircle,
+  faPhotoVideo
 )
 
 const app = createApp(App)

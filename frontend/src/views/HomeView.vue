@@ -11,6 +11,7 @@
       @showFavorites="handleShowFavorites"
       @directoriesLoaded="handleDirectoriesLoaded"
       @photoCountsChanged="loadPhotoCounts"
+      @select-album="selectAlbum"
     />
     <!-- 照片网格 -->
     <PhotoGrid 
@@ -18,6 +19,7 @@
       :directoryPath="selectedDirectory" 
       :showAllPhotos="showAllPhotos" 
       :showFavorites="showFavorites"
+      :selectedAlbum="selectedAlbum"
       @select-image="updateSelectedImage" 
       @image-count-changed="loadPhotoCounts"
       :has-info-panel="!!selectedImage" 
@@ -44,6 +46,7 @@ const selectedDirectory = ref('')
 const selectedImage = ref(null)
 const showAllPhotos = ref(true)
 const showFavorites = ref(false)
+const selectedAlbum = ref(null)
 const photoGridRef = ref(null)
 const photoCounts = ref({
   allPhotos: 0,
@@ -61,6 +64,7 @@ const updateSelectedDirectory = (path) => {
   // 当选择特定目录时，关闭全部照片和收藏夹模式
   showAllPhotos.value = false
   showFavorites.value = false
+  selectedAlbum.value = null
 }
 
 const updateSelectedImage = (image) => {
@@ -97,6 +101,7 @@ const handleShowAllPhotos = () => {
   // 设置显示全部照片模式
   showAllPhotos.value = true
   showFavorites.value = false
+  selectedAlbum.value = null
   // 清空selectedDirectory，避免与全部照片模式冲突
   selectedDirectory.value = ''
 }
@@ -105,7 +110,16 @@ const handleShowFavorites = () => {
   // 设置显示收藏夹模式
   showFavorites.value = true
   showAllPhotos.value = false
+  selectedAlbum.value = null
   // 清空selectedDirectory，避免与收藏夹模式冲突
+  selectedDirectory.value = ''
+}
+
+const selectAlbum = (albumId) => {
+  // 设置相册模式
+  selectedAlbum.value = albumId
+  showAllPhotos.value = false
+  showFavorites.value = false
   selectedDirectory.value = ''
 }
 

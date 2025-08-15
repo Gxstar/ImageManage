@@ -94,62 +94,95 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, onMounted } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-// 相册数据 - 年轻化示例数据
-const albums = reactive([
-  { id: 1, name: '日常随拍' },
-  { id: 2, name: '旅行日记' },
-  { id: 3, name: '美食探店' },
-  { id: 4, name: '春日限定' },
-  { id: 5, name: '工作素材' },
-  { id: 6, name: '宠物相册' }
-])
+// Props 和 Emits
+const emit = defineEmits(['select-album', 'album-changed'])
 
 // 状态管理
+const albums = ref([])
 const selectedAlbum = ref(null)
 const showAddDialog = ref(false)
 const newAlbumName = ref('')
+const loading = ref(false)
 
 // 方法
+const loadAlbums = async () => {
+  loading.value = true
+  try {
+    const result = await window.pywebview.api.get_all_albums()
+    if (result.success) {
+      albums.value = result.albums || []
+    } else {
+      console.error('获取相册失败:', result.error)
+    }
+  } catch (error) {
+    console.error('获取相册失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
 const selectAlbum = (albumId) => {
   selectedAlbum.value = albumId
-  // TODO: 触发相册切换事件
-  console.log('选择相册:', albumId)
+  emit('select-album', albumId)
 }
 
-const addAlbum = () => {
+const addAlbum = async () => {
   if (!newAlbumName.value.trim()) return
   
-  const newAlbum = {
-    id: Date.now(),
-    name: newAlbumName.value.trim()
+  try {
+    const result = await window.pywebview.api.create_album(newAlbumName.value.trim())
+    if (result.success) {
+      await loadAlbums()
+      newAlbumName.value = ''
+      showAddDialog.value = false
+      emit('album-changed')
+    } else {
+      console.error('创建相册失败:', result.error)
+    }
+  } catch (error) {
+    console.error('创建相册失败:', error)
   }
-  
-  albums.push(newAlbum)
-  newAlbumName.value = ''
-  showAddDialog.value = false
-  
-  // TODO: 触发添加相册事件
-  console.log('创建相册:', newAlbum)
 }
 
-const deleteAlbum = (albumId) => {
-  const index = albums.findIndex(album => album.id === albumId)
-  if (index > -1) {
-    const albumName = albums[index].name
-    albums.splice(index, 1)
-    
-    // 如果删除的是当前选中的相册，取消选中
-    if (selectedAlbum.value === albumId) {
-      selectedAlbum.value = null
+const deleteAlbum = async (albumId) => {
+  try {
+    const result = await window.pywebview.api.delete_album(albumId)
+    if (result.success) {
+      await loadAlbums()
+      if (selectedAlbum.value === albumId) {
+        selectedAlbum.value = null
+        emit('select-album', null)
+      }
+      emit('album-changed')
+    } else {
+      console.error('删除相册失败:', result.error)
     }
-    
-    // TODO: 触发删除相册事件
-    console.log('删除相册:', albumName)
+  } catch (error) {
+    console.error('删除相册失败:', error)
   }
 }
+
+// 生命周期
+onMounted(() => {
+  loadAlbums()
+})
+
+// 暴露方法给父组件
+const refreshAlbums = () => {
+  loadAlbums()
+}
+
+const clearSelection = () => {
+  selectedAlbum.value = null
+}
+
+defineExpose({
+  refreshAlbums,
+  clearSelection
+})
 </script>
 
 <style scoped>

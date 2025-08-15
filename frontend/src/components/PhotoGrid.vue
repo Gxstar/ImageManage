@@ -5,6 +5,8 @@
       :directoryPath="directoryPath"
       :showAllPhotos="showAllPhotos"
       :showFavorites="showFavorites"
+      :selectedAlbum="selectedAlbum"
+      :albumName="albumName"
       :imageCount="totalCount"
       @refresh="loadImages"
     />
@@ -57,6 +59,10 @@ const props = defineProps({
   showFavorites: {
     type: Boolean,
     default: false
+  },
+  selectedAlbum: {
+    type: [Number, String],
+    default: null
   }
 })
 
@@ -74,6 +80,7 @@ const pageSize = 50
 const hasMore = ref(true)
 const isLoadingMore = ref(false)
 const debugMode = ref(false)
+const albumName = ref('')
 
 // 组件引用
 const photoGridViewRef = ref(null)
@@ -104,6 +111,23 @@ const loadImages = async (loadMore = false) => {
         // 应用分页
         result.images = result.images.slice(currentOffset.value, currentOffset.value + pageSize)
       }
+    } else if (props.selectedAlbum) {
+      // 获取相册详情和相册内图片
+      const [albumResult, imagesResult] = await Promise.all([
+        window.pywebview.api.get_album_details(parseInt(props.selectedAlbum)),
+        window.pywebview.api.get_album_images(
+          parseInt(props.selectedAlbum), 
+          pageSize, 
+          currentOffset.value,
+          'added_at',
+          'desc'
+        )
+      ])
+      
+      if (albumResult.success && albumResult.album) {
+        albumName.value = albumResult.album.name
+      }
+      result = imagesResult
     } else if (props.showAllPhotos) {
       result = await window.pywebview.api.get_all_images(pageSize, currentOffset.value)
     } else if (props.directoryPath) {
@@ -201,7 +225,10 @@ const clearRatingFilter = () => {
 }
 
 // 监听属性变化
-watch([() => props.directoryPath, () => props.showAllPhotos, () => props.showFavorites], () => {
+watch([() => props.directoryPath, () => props.showAllPhotos, () => props.showFavorites, () => props.selectedAlbum], () => {
+  if (!props.selectedAlbum) {
+    albumName.value = ''
+  }
   loadImages()
 }, { immediate: true })
 

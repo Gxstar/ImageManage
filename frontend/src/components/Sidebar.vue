@@ -30,7 +30,11 @@
           @removeDirectory="removeDirectory" />
 
         <!-- 相册部分 -->
-        <AlbumSection :photoCounts="photoCounts" />
+        <AlbumSection 
+          ref="albumSectionRef"
+          :photoCounts="photoCounts" 
+          @select-album="selectAlbum"
+          @album-changed="handleAlbumChanged" />
       </div>
 
       <!-- 智能分类部分 -->
@@ -85,14 +89,30 @@ const props = defineProps({
 });
 
 // Emits 定义
-const emit = defineEmits(['update:selectedDirectory', 'showContextMenu', 'showAllPhotos', 'showFavorites', 'directoriesLoaded', 'photoCountsChanged']);
+const emit = defineEmits(['update:selectedDirectory', 'showContextMenu', 'showAllPhotos', 'showFavorites', 'directoriesLoaded', 'photoCountsChanged', 'select-album']);
 
 // 响应式数据
 const directories = ref({});
+const albumSectionRef = ref(null);
 
 // 选择目录
 const selectDirectory = (path) => {
   emit('update:selectedDirectory', path);
+  // 清除相册选择
+  if (albumSectionRef.value) {
+    albumSectionRef.value.clearSelection();
+  }
+};
+
+// 选择相册
+const selectAlbum = (albumId) => {
+  emit('update:selectedDirectory', ''); // 清除目录选择
+  emit('select-album', albumId);
+};
+
+// 处理相册变化
+const handleAlbumChanged = () => {
+  emit('photoCountsChanged');
 };
 
 // 显示目录右键菜单
