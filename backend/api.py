@@ -27,11 +27,11 @@ class Api:
         """移除目录"""
         return self.directory_service.remove_directory(directory_path)
     
-    def get_all_images(self, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    def get_all_images(self, limit: int = None, offset: int = 0) -> Dict[str, Any]:
         """获取所有图片 - 支持分页"""
         return self.image_service.get_all_images(limit, offset)
 
-    def get_images_in_directory(self, directory_path: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    def get_images_in_directory(self, directory_path: str, limit: int = None, offset: int = 0) -> Dict[str, Any]:
         """获取指定目录中的图片 - 支持分页"""
         try:
             limit = int(limit)
@@ -159,7 +159,7 @@ class Api:
         except Exception as e:
             return {"success": False, "error": f"参数格式错误: {str(e)}"}
 
-    def get_album_images(self, album_id: int, limit: int = 50, offset: int = 0,
+    def get_album_images(self, album_id: int, limit: int = None, offset: int = 0,
                         sort_by: str = "added_at", sort_order: str = "asc") -> Dict[str, Any]:
         """获取相册中的图片"""
         try:
